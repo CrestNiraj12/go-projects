@@ -76,7 +76,7 @@ func printBorder(width []int) {
 }
 
 func throwErrorAndExit() {
-	fmt.Fprintln(os.Stderr, "Error: No arguments found\nUsage: go run main.go [-l] file1 file2 ...")
+	fmt.Fprintln(os.Stderr, "\nError: No arguments found\nUsage: go run main.go [-l] file1 file2 ...")
 	os.Exit(-1)
 }
 
