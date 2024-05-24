@@ -1,4 +1,4 @@
-package fileCount 
+package main 
 
 import (
 	"bufio"
