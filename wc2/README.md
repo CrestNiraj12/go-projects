@@ -5,9 +5,9 @@ files if multiple files are passed as arguments. Use flags `[-l|-w|-c]` to only 
 ### How to run?
 `go run . [-l|-w|-c] file1 file2...`
 
-**Example:**
-Without flag:
+## Example:
+**Without flag:**
 `go run . *.txt`
 
-With flag:
+**With flag:**
 `go run . -l *.txt`
