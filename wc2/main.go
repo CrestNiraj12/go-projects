@@ -1,4 +1,4 @@
-package main 
+package main
 
 import (
 	"bufio"
@@ -100,7 +100,7 @@ func main() {
 		file, err := os.Open(fName)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Error while reading file")
-			continue
+			os.Exit(-1)
 		}
 
 		scan := bufio.NewScanner(file)
