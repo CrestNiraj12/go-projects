@@ -16,9 +16,9 @@ type Count struct {
 }
 
 type TotalCount struct {
-  totalChar int
-  totalWords int
-  totalLines int
+	totalChar  int
+	totalWords int
+	totalLines int
 }
 
 type FormatArg struct {
@@ -61,17 +61,7 @@ func throwErrorAndExit() {
 	os.Exit(-1)
 }
 
-func main() {
-	if len(os.Args) < 2 {
-		throwErrorAndExit()
-	}
-	args := os.Args[1:]
-	files, labels := getFilesAndLabels(args)
-	if len(files) == 0 {
-		throwErrorAndExit()
-	}
-
-	var counts []Count
+func openFileAndStoreCount(files []string, counts *[]Count) {
 	for _, fName := range files {
 		var wc, cc, lc int
 		file, err := os.Open(fName)
@@ -88,10 +78,24 @@ func main() {
 			lc++
 		}
 
-		counts = append(counts, Count{fName, cc, wc, lc})
+		*counts = append(*counts, Count{fName, cc, wc, lc})
 		file.Close()
 	}
+}
 
+func main() {
+	if len(os.Args) < 2 {
+		throwErrorAndExit()
+	}
+	args := os.Args[1:]
+	files, labels := getFilesAndLabels(args)
+	if len(files) == 0 {
+		throwErrorAndExit()
+	}
+
+	counts := make([]Count, 0, len(files))
+	openFileAndStoreCount(files, &counts)
+   
 	width := make([]int, 0, len(labels))
 	for _, header := range labels {
 		width = append(width, len(header))
