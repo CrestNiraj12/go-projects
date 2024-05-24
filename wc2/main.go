@@ -15,6 +15,12 @@ type Count struct {
 	lineCount int
 }
 
+type TotalCount struct {
+  totalChar int
+  totalWords int
+  totalLines int
+}
+
 type FormatArg struct {
 	header string
 	width  int
@@ -50,40 +56,11 @@ func getFilesAndLabels(args []string) (files []string, labels []string) {
 	return files, labels
 }
 
-func isValidHeader(labels []string, label string, currHeader string) bool {
-	return slices.Contains(labels, label) && currHeader == label
-}
-
-func printDivider(width []int) {
-	fmt.Print("|")
-	for _, w := range width {
-		fmt.Print(strings.Repeat("-", w))
-		fmt.Print("|")
-	}
-	fmt.Println()
-}
-
-func printBorder(width []int) {
-	fmt.Print(">")
-	for i, w := range width {
-		fmt.Print(strings.Repeat("-", w))
-		fmt.Print("-")
-		if i == len(width)-1 {
-			fmt.Print("<")
-		}
-	}
-	fmt.Println()
-}
-
 func throwErrorAndExit() {
 	fmt.Fprintln(os.Stderr, "\nError: No arguments found\nUsage: go run main.go [-l] file1 file2 ...")
 	os.Exit(-1)
 }
 
-// TODO
-// Make Arguments Dynamic -l, -c, -w
-// Make Print dynamic according to args [Store the counts and calculate and print later]
-// Adjust file width according to largest text file name
 func main() {
 	if len(os.Args) < 2 {
 		throwErrorAndExit()
@@ -120,71 +97,104 @@ func main() {
 		width = append(width, len(header))
 	}
 
-	var tc, tw, tl int
+	isValidLabel := func(label string) bool {
+		return slices.Contains(labels, label)
+	}
+
+	getCountByLabel := func(count interface{}, label string) (val int) {
+		if !isValidLabel(label) {
+			return val
+		}
+
+		switch v := count.(type) {
+		case *Count:
+			switch label {
+			case char:
+				val = (*v).charCount
+			case word:
+				val = (*v).wordCount
+			case line:
+				val = (*v).lineCount
+			}
+		case *TotalCount:
+			switch label {
+			case char:
+				val = (*v).totalChar
+			case word:
+				val = (*v).totalWords
+			case line:
+				val = (*v).totalLines
+			}
+		}
+
+		return val
+	}
+
+	var totalCount TotalCount
 	for _, count := range counts {
 		for i, header := range labels {
 			var currLen int
 			if header == file {
 				currLen = len(count.fileName)
-			} else if isValidHeader(labels, char, header) {
-				currLen = len(fmt.Sprintf("%d", count.charCount))
-			} else if isValidHeader(labels, word, header) {
-				currLen = len(fmt.Sprintf("%d", count.wordCount))
-			} else if isValidHeader(labels, line, header) {
-				currLen = len(fmt.Sprintf("%d", count.lineCount))
+			} else {
+				currLen = len(fmt.Sprintf("%d", getCountByLabel(&count, header)))
 			}
 
 			if currLen > width[i] {
 				width[i] = currLen
 			}
 		}
-		tc += count.charCount
-		tw += count.wordCount
-		tl += count.lineCount
+		totalCount.totalChar += count.charCount
+		totalCount.totalWords += count.wordCount
+		totalCount.totalLines += count.lineCount
 	}
 
 	stringFormat := "%-*s"
 	digitFormat := "%*d"
-	printBorder(width)
+	printDivider := func() {
+		fmt.Print("|")
+		for _, w := range width {
+			fmt.Print(strings.Repeat("-", w))
+			fmt.Print("|")
+		}
+		fmt.Println()
+	}
+
+	printBorder := func() {
+		fmt.Print(">")
+		for i, w := range width {
+			fmt.Print(strings.Repeat("-", w))
+			fmt.Print("-")
+			if i == len(width)-1 {
+				fmt.Print("<")
+			}
+		}
+		fmt.Println()
+	}
+	printBorder()
 
 	fmt.Print("|")
 	for i := range labels {
 		fmt.Printf(stringFormat+"|", width[i], labels[i])
 	}
 	fmt.Println()
-	printDivider(width)
+	printDivider()
 
 	for _, count := range counts {
 		fmt.Printf("|"+stringFormat+"|", width[0], count.fileName)
 		for i, header := range labels[1:] {
-			var value int
-			if isValidHeader(labels, char, header) {
-				value = count.charCount
-			} else if isValidHeader(labels, word, header) {
-				value = count.wordCount
-			} else if isValidHeader(labels, line, header) {
-				value = count.lineCount
-			}
-			fmt.Printf(digitFormat+"|", width[i+1], value)
+			fmt.Printf(digitFormat+"|", width[i+1], getCountByLabel(&count, header))
 		}
 		fmt.Println()
 	}
 
 	if len(files) > 1 {
-		printDivider(width)
+		printDivider()
 		fmt.Printf("|"+stringFormat+"|", width[0], "Total")
 		for i, header := range labels[1:] {
-			var value int
-			if isValidHeader(labels, char, header) {
-				value = tc
-			} else if isValidHeader(labels, word, header) {
-				value = tw
-			} else if isValidHeader(labels, line, header) {
-				value = tl
-			}
-			fmt.Printf(digitFormat+"|", width[i+1], value)
+			fmt.Printf(digitFormat+"|", width[i+1], getCountByLabel(&totalCount, header))
 		}
 		fmt.Println()
 	}
-	printBorder(width)
+	printBorder()
 }
