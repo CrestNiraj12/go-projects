@@ -52,11 +52,11 @@ func displayContent() {
 	}
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
 	defer termbox.Flush()
-
+  
 	for i, line := range content {
 		lineNum := fmt.Sprintf("%*d", startX-1, i+1)
 		for j, n := range lineNum {
-			termbox.SetCell(j, i, n, termbox.ColorWhite, termbox.ColorDefault)
+			termbox.SetCell(j, i, n, termbox.ColorWhite, termbox.ColorDarkGray)
 		}
 		for j, ch := range string(line) {
 			termbox.SetCell(j+5, i, ch, termbox.ColorDefault, termbox.ColorDefault)
