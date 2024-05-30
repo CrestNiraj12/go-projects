@@ -82,21 +82,30 @@ inputLoop:
 				if cursorY > 0 {
 					cursorY--
 				}
+
+				lineLength = len(content[cursorY])
+				if totalLines <= cursorY || lineLength <= 0 {
+					changeX(startX)
+				} else if lineLength < xi {
+					changeX(lineLength + startX - 1)
+				}
+
 			case termbox.KeyArrowDown:
 				if cursorY < totalLines-1 {
 					cursorY++
 				}
+				lineLength = len(content[cursorY])
 				if totalLines <= cursorY || lineLength <= 0 {
 					changeX(startX)
 				} else if lineLength < xi {
-					changeX(lineLength)
+					changeX(lineLength + startX - 1)
 				}
 			case termbox.KeyArrowLeft:
 				if cursorX > startX {
 					changeX(cursorX - 1)
 				}
 			case termbox.KeyArrowRight:
-				if lineLength > xi {
+				if lineLength > xi+1 {
 					changeX(cursorX + 1)
 				}
 			case termbox.KeyEnter:
@@ -118,11 +127,21 @@ inputLoop:
 				cursorY++
 				changeX(startX)
 			case termbox.KeyBackspace, termbox.KeyBackspace2:
-				if xi <= 0 {
-					break
+				if cursorY == 0 && xi == 0 {
+					return
 				}
-
-				if lineLength > xi {
+				if xi == 0 {
+					var prevLines [][]rune
+					if len(strings.TrimSpace(string(line))) == 0 {
+						prevLines = append(content[:cursorY-1], content[cursorY-1])
+					} else {
+						prevLines = append(content[:cursorY-1], append(content[cursorY-1], line...))
+					}
+					content = append(prevLines, content[cursorY+1:]...)
+					changeX(len(content[cursorY-1]) + startX - 1)
+					cursorY--
+					break
+				} else if lineLength > xi {
 					content[cursorY] = append(content[cursorY][:xi-1], content[cursorY][xi:]...)
 				} else {
 					content[cursorY] = content[cursorY][:xi-1]
