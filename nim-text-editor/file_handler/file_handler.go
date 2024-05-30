@@ -2,7 +2,6 @@ package filehandler
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"strings"
 
@@ -14,29 +13,23 @@ const (
 )
 
 var (
-	content [][]rune
-	cursorY int
-	cursorX = startX
+	content  [][]rune
+	cursorY  int
+	cursorX  = startX
+	fileName string
 )
 
 func InitHandler(filename string) {
-	openAndReadFile(filename)
+	fileName = filename
+	openAndReadFile()
 	displayContent()
 	handleInput()
-	defer termbox.Close()
 }
 
-func openAndReadFile(filename string) {
-	file, err := os.Open(filename)
+func openAndReadFile() {
+	contentByte, err := os.ReadFile(fileName)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error reading file: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-
-	contentByte, err := io.ReadAll(file)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error reading file: %s\n", filename)
 		return
 	}
 
@@ -52,26 +45,68 @@ func displayContent() {
 	}
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
 	defer termbox.Flush()
-  
-	for i, line := range content {
-		lineNum := fmt.Sprintf("%*d", startX-1, i+1)
-		for j, n := range lineNum {
+
+	lineNum := func(i int) {
+		lineFormat := fmt.Sprintf("%*d", startX-1, i+1)
+		for j, n := range lineFormat {
 			termbox.SetCell(j, i, n, termbox.ColorWhite, termbox.ColorDarkGray)
 		}
-		for j, ch := range string(line) {
-			termbox.SetCell(j+5, i, ch, termbox.ColorDefault, termbox.ColorDefault)
+	}
+
+	if len(content) == 0 {
+		lineNum(0)
+		termbox.SetCell(0, 0, ' ', termbox.ColorWhite, termbox.ColorDarkGray)
+	} else {
+		for i, line := range content {
+			lineNum(i)
+			for j, ch := range string(line) {
+				termbox.SetCell(j+5, i, ch, termbox.ColorDefault, termbox.ColorDefault)
+			}
 		}
 	}
+
 	termbox.SetCursor(cursorX, cursorY)
 }
 
+func saveFile() {
+	termbox.Close()
+
+	var bytes []byte
+	for _, line := range content {
+		bytes = append(bytes, []byte(strings.TrimSpace(string(line))+"\n")...)
+	}
+
+	err := os.WriteFile(fileName, bytes, 0644)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error writing to file: %v\n", err)
+		return
+	}
+	fmt.Printf("\nWritten %d bytes to file\n", len(bytes))
+	os.Exit(0)
+}
+
 func handleInput() {
+	var (
+		lineLength int
+		line       []rune
+	)
+
+	changeX := func(val int) {
+		if val < startX {
+			cursorX = startX
+		} else {
+			cursorX = val
+		}
+	}
+
 inputLoop:
 	for {
-		xi := getXIndex()
+		xi := cursorX - startX
 		totalLines := len(content)
-		lineLength := len(content[cursorY])
-		line := content[cursorY]
+		if totalLines != 0 {
+			lineLength = len(content[cursorY])
+			line = content[cursorY]
+		}
 
 		switch ev := termbox.PollEvent(); ev.Type {
 		case termbox.EventKey:
@@ -147,13 +182,21 @@ inputLoop:
 					content[cursorY] = content[cursorY][:xi-1]
 				}
 				changeX(cursorX - 1)
+			case termbox.KeyCtrlS:
+				saveFile()
+			case termbox.KeySpace:
+				content[cursorY] = append(line[:xi+1], append([]rune{' '}, line[xi+1:]...)...)
+				changeX(cursorX + 1)
 			default:
+				if ev.Ch == 0 {
+					continue inputLoop
+				}
 				if cursorY >= len(content) {
 					content = append(content, []rune{ev.Ch})
 				} else if xi >= lineLength {
 					content[cursorY] = append(content[cursorY], ev.Ch)
 				} else {
-					content[cursorY] = append(content[cursorY][:xi], append([]rune{ev.Ch}, content[cursorY][xi:]...)...)
+					content[cursorY] = append(content[cursorY][:xi+1], append([]rune{ev.Ch}, content[cursorY][xi+1:]...)...)
 				}
 				changeX(cursorX + 1)
 			}
@@ -163,16 +206,5 @@ inputLoop:
 		}
 		displayContent()
 	}
-}
-
-func changeX(val int) {
-	if val < startX {
-		cursorX = startX
-	} else {
-		cursorX = val
-	}
-}
-
-func getXIndex() int {
-	return cursorX - startX
+	termbox.Close()
 }
