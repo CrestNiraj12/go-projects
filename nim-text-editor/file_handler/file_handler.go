@@ -68,7 +68,11 @@ func displayContent() {
 func handleInput() {
 inputLoop:
 	for {
-    xi := getXIndex()
+		xi := getXIndex()
+		totalLines := len(content)
+		lineLength := len(content[cursorY])
+		line := content[cursorY]
+
 		switch ev := termbox.PollEvent(); ev.Type {
 		case termbox.EventKey:
 			switch ev.Key {
@@ -79,25 +83,37 @@ inputLoop:
 					cursorY--
 				}
 			case termbox.KeyArrowDown:
-				cursorY++
-				if len(content) <= cursorY || len(content[cursorY]) <= 0 {
+				if cursorY < totalLines-1 {
+					cursorY++
+				}
+				if totalLines <= cursorY || lineLength <= 0 {
 					changeX(startX)
-				} else if len(content[cursorY]) < xi {
-					changeX(len(content[cursorY]))
+				} else if lineLength < xi {
+					changeX(lineLength)
 				}
 			case termbox.KeyArrowLeft:
 				if cursorX > startX {
 					changeX(cursorX - 1)
 				}
 			case termbox.KeyArrowRight:
-				if len(content[cursorY]) > xi {
+				if lineLength > xi {
 					changeX(cursorX + 1)
 				}
 			case termbox.KeyEnter:
-				if len(content) < cursorY+1 {
+				if totalLines < cursorY+1 {
 					content = append(content[:cursorY+1], []rune{'\n'})
 				} else {
-					content = append(content[:cursorY+1], append([][]rune{{'\n'}}, content[cursorY+1:]...)...)
+					if lineLength > 1 {
+						breakLine := append(content[:cursorY], line[:xi+1])
+						if xi >= lineLength {
+							content = append(breakLine, append([][]rune{{'\n'}}, content[cursorY+1:]...)...)
+						} else {
+							content = append(breakLine, append([][]rune{line[xi+1:]}, content[cursorY+1:]...)...)
+						}
+					} else {
+						lines := append(content[:cursorY+1], []rune{'\n'})
+						content = append(lines, content[cursorY+1:]...)
+					}
 				}
 				cursorY++
 				changeX(startX)
@@ -106,7 +122,7 @@ inputLoop:
 					break
 				}
 
-				if len(content[cursorY]) > xi {
+				if lineLength > xi {
 					content[cursorY] = append(content[cursorY][:xi-1], content[cursorY][xi:]...)
 				} else {
 					content[cursorY] = content[cursorY][:xi-1]
@@ -115,7 +131,7 @@ inputLoop:
 			default:
 				if cursorY >= len(content) {
 					content = append(content, []rune{ev.Ch})
-				} else if xi >= len(content[cursorY]) {
+				} else if xi >= lineLength {
 					content[cursorY] = append(content[cursorY], ev.Ch)
 				} else {
 					content[cursorY] = append(content[cursorY][:xi], append([]rune{ev.Ch}, content[cursorY][xi:]...)...)
