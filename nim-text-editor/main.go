@@ -13,7 +13,5 @@ func main() {
 	}
 
 	filename := os.Args[1]
-	fmt.Printf("Opening file: %s...\n", filename)
-
 	filehandler.InitHandler(filename)
 }
