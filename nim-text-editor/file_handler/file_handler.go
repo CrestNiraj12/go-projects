@@ -10,7 +10,7 @@ import (
 )
 
 // TODO
-// Scroll vertically / horizontally
+// Request save
 // Remember cursor position
 // Implement better data structure - rope, tabulation, gap buffer, etc
 // Undo / Redo
@@ -26,6 +26,8 @@ var (
 	cursorX          = startX
 	fileName         string
 	scrollY, scrollX int
+	width, height    int
+	isModified       bool
 )
 
 func InitHandler(filename string) {
@@ -49,6 +51,8 @@ func openAndReadFile() {
 	}
 }
 
+// n is line number, i is y position
+// line number (n) increases with line while y position (i) is static on the screen
 func insertLineNum(n int, i int) {
 	lineFormat := fmt.Sprintf("%*d", startX-1, n+1)
 	for j, r := range lineFormat {
@@ -61,6 +65,7 @@ func displayContent() {
 		fmt.Fprintf(os.Stderr, "Error initializing TUI: %v\n", err)
 		return
 	}
+	width, height = termbox.Size()
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
 	defer termbox.Flush()
 
@@ -83,9 +88,36 @@ func displayContent() {
 	termbox.SetCursor(cursorX-scrollX, cursorY-scrollY)
 }
 
-func saveFile() {
-	termbox.Close()
+func displayMessage(message string) {
+	for _, line := range splitLines(message) {
+		for x, ch := range line {
+			termbox.SetCell(x, height-1, ch, termbox.ColorDefault, termbox.ColorDefault)
+		}
+	}
+	termbox.Flush()
+}
 
+func splitLines(content string) []string {
+	return strings.Split(content, "\n")
+}
+
+func promptSave() bool {
+	displayMessage("You have unsaved changes. Save before exiting? (y/n)")
+	for {
+		switch ev := termbox.PollEvent(); ev.Type {
+		case termbox.EventKey:
+			if ev.Ch == 'y' || ev.Ch == 'Y' {
+				return true
+			} else if ev.Ch == 'n' || ev.Ch == 'N' {
+				return false
+			}
+		case termbox.EventError:
+			return false
+		}
+	}
+}
+
+func saveFile() {
 	var bytes []byte
 	for _, line := range content {
 		bytes = append(bytes, []byte(strings.TrimSpace(string(line))+"\n")...)
@@ -96,8 +128,10 @@ func saveFile() {
 		fmt.Fprintf(os.Stderr, "Error writing to file: %v\n", err)
 		return
 	}
-	fmt.Printf("\nWritten %d bytes to file\n", len(bytes))
-	os.Exit(0)
+	isModified = false
+	message := fmt.Sprintf("Written %d bytes to file. Press any key to continue", len(bytes))
+	displayMessage(message)
+	termbox.PollEvent()
 }
 
 func handleInput() {
@@ -118,7 +152,6 @@ inputLoop:
 	for {
 		xi := cursorX - startX
 		totalLines := len(content)
-		width, height := termbox.Size()
 		if totalLines > cursorY {
 			lineLength = len(content[cursorY])
 			line = content[cursorY]
@@ -127,7 +160,12 @@ inputLoop:
 		switch ev := termbox.PollEvent(); ev.Type {
 		case termbox.EventKey:
 			switch ev.Key {
-			case termbox.KeyCtrlQ:
+			case termbox.KeyEsc, termbox.KeyCtrlQ:
+				if isModified {
+					if doSave := promptSave(); doSave {
+						saveFile()
+					}
+				}
 				break inputLoop
 			case termbox.KeyArrowUp:
 				if cursorY > 0 {
@@ -221,6 +259,7 @@ inputLoop:
 					scrollY++
 				}
 				changeX(startX)
+				isModified = true
 			case termbox.KeyBackspace, termbox.KeyBackspace2:
 				if cursorY == 0 && xi == 0 {
 					continue inputLoop
@@ -252,6 +291,7 @@ inputLoop:
 						scrollX -= width
 					}
 				}
+				isModified = true
 			case termbox.KeyCtrlS:
 				saveFile()
 			case termbox.KeySpace:
@@ -261,6 +301,7 @@ inputLoop:
 					content[cursorY] = append(line[:xi+1], append([]rune{' '}, line[xi+1:]...)...)
 				}
 				changeX(cursorX + 1)
+				isModified = true
 			default:
 				if ev.Ch == 0 {
 					continue inputLoop
@@ -279,6 +320,7 @@ inputLoop:
 					}
 				}
 				changeX(cursorX + 1)
+				isModified = true
 			}
 		case termbox.EventError:
 			fmt.Printf("Termbox error: %v\n", ev.Err)
