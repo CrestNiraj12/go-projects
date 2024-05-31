@@ -10,7 +10,6 @@ import (
 )
 
 // TODO
-// Fix bugs
 // Scroll vertically / horizontally
 // Remember cursor position
 // Implement better data structure - rope, tabulation, gap buffer, etc
@@ -26,6 +25,7 @@ var (
 	cursorY  int
 	cursorX  = startX
 	fileName string
+	scrollY  int
 )
 
 func InitHandler(filename string) {
@@ -57,26 +57,30 @@ func displayContent() {
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
 	defer termbox.Flush()
 
-	lineNum := func(i int) {
-		lineFormat := fmt.Sprintf("%*d", startX-1, i+1)
-		for j, n := range lineFormat {
-			termbox.SetCell(j, i, n, termbox.ColorWhite, termbox.ColorDarkGray)
+	lineNum := func(n int, i int) {
+		lineFormat := fmt.Sprintf("%*d", startX-1, n+1)
+		for j, r := range lineFormat {
+			termbox.SetCell(j, i, r, termbox.ColorWhite, termbox.ColorDarkGray)
 		}
 	}
 
 	if len(content) == 0 {
-		lineNum(0)
+		lineNum(0, 0)
 		termbox.SetCell(0, 0, ' ', termbox.ColorWhite, termbox.ColorDarkGray)
 	} else {
-		for i, line := range content {
-			lineNum(i)
+		_, height := termbox.Size()
+
+		for y := 0; y < height && (scrollY+y) < len(content); y++ {
+			line := content[scrollY+y]
+			lineNum(scrollY+y, y)
+
 			for j, ch := range string(line) {
-				termbox.SetCell(j+5, i, ch, termbox.ColorDefault, termbox.ColorDefault)
+				termbox.SetCell(j+5, y, ch, termbox.ColorDefault, termbox.ColorDefault)
 			}
 		}
 	}
 
-	termbox.SetCursor(cursorX, cursorY)
+	termbox.SetCursor(cursorX, cursorY-scrollY)
 }
 
 func saveFile() {
@@ -114,6 +118,7 @@ inputLoop:
 	for {
 		xi := cursorX - startX
 		totalLines := len(content)
+		_, height := termbox.Size()
 		if totalLines > cursorY {
 			lineLength = len(content[cursorY])
 			line = content[cursorY]
@@ -127,6 +132,9 @@ inputLoop:
 			case termbox.KeyArrowUp:
 				if cursorY > 0 {
 					cursorY--
+					if cursorY < scrollY {
+						scrollY--
+					}
 				}
 
 				lineLength = len(content[cursorY])
@@ -139,6 +147,9 @@ inputLoop:
 			case termbox.KeyArrowDown:
 				if cursorY < totalLines-1 {
 					cursorY++
+					if cursorY >= scrollY+height {
+						scrollY++
+					}
 				}
 				lineLength = len(content[cursorY])
 				if totalLines <= cursorY || lineLength <= 0 {
@@ -153,6 +164,26 @@ inputLoop:
 			case termbox.KeyArrowRight:
 				if lineLength >= xi+1 {
 					changeX(cursorX + 1)
+				}
+			case termbox.KeyPgup:
+				cursorY -= height
+				scrollY -= height
+
+				if cursorY < 0 {
+					cursorY = 0
+				}
+				if scrollY < 0 {
+					scrollY = 0
+				}
+			case termbox.KeyPgdn:
+				cursorY += height
+				scrollY += height
+
+				if cursorY > len(content) {
+					cursorY = len(content) - 1
+				}
+				if scrollY < len(content) - height {
+					scrollY = len(content) - height
 				}
 			case termbox.KeyEnter:
 				if totalLines < cursorY+1 {
@@ -180,6 +211,9 @@ inputLoop:
 					}
 				}
 				cursorY++
+				if cursorY >= scrollY+height {
+					scrollY++
+				}
 				changeX(startX)
 			case termbox.KeyBackspace, termbox.KeyBackspace2:
 				if cursorY == 0 && xi == 0 {
