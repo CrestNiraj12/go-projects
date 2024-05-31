@@ -49,6 +49,13 @@ func openAndReadFile() {
 	}
 }
 
+func insertLineNum(n int, i int) {
+	lineFormat := fmt.Sprintf("%*d", startX-1, n+1)
+	for j, r := range lineFormat {
+		termbox.SetCell(j, i, r, termbox.ColorWhite, termbox.ColorDarkGray)
+	}
+}
+
 func displayContent() {
 	if err := termbox.Init(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error initializing TUI: %v\n", err)
@@ -57,22 +64,15 @@ func displayContent() {
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
 	defer termbox.Flush()
 
-	lineNum := func(n int, i int) {
-		lineFormat := fmt.Sprintf("%*d", startX-1, n+1)
-		for j, r := range lineFormat {
-			termbox.SetCell(j, i, r, termbox.ColorWhite, termbox.ColorDarkGray)
-		}
-	}
-
 	if len(content) == 0 {
-		lineNum(0, 0)
+		insertLineNum(0, 0)
 		termbox.SetCell(0, 0, ' ', termbox.ColorWhite, termbox.ColorDarkGray)
 	} else {
 		_, height := termbox.Size()
 
 		for y := 0; y < height && (scrollY+y) < len(content); y++ {
 			line := content[scrollY+y]
-			lineNum(scrollY+y, y)
+			insertLineNum(scrollY+y, y)
 
 			for j, ch := range string(line) {
 				termbox.SetCell(j+5, y, ch, termbox.ColorDefault, termbox.ColorDefault)
@@ -182,7 +182,7 @@ inputLoop:
 				if cursorY > len(content) {
 					cursorY = len(content) - 1
 				}
-				if scrollY < len(content) - height {
+				if scrollY < len(content)-height {
 					scrollY = len(content) - height
 				}
 			case termbox.KeyEnter:
