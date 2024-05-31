@@ -1,6 +1,7 @@
 package filehandler
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -8,6 +9,14 @@ import (
 	"github.com/nsf/termbox-go"
 )
 
+// TODO
+// Fix bugs
+// Scroll vertically / horizontally
+// Remember cursor position
+// Implement better data structure - rope, tabulation, gap buffer, etc
+// Undo / Redo
+// Word wrap
+// Refactor code
 const (
 	startX = 5
 )
@@ -29,7 +38,9 @@ func InitHandler(filename string) {
 func openAndReadFile() {
 	contentByte, err := os.ReadFile(fileName)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error reading file: %v\n", err)
+		if !errors.Is(err, os.ErrNotExist) {
+			fmt.Fprintf(os.Stderr, "Error reading file: %v\n", err)
+		}
 		return
 	}
 
@@ -103,7 +114,7 @@ inputLoop:
 	for {
 		xi := cursorX - startX
 		totalLines := len(content)
-		if totalLines != 0 {
+		if totalLines > cursorY {
 			lineLength = len(content[cursorY])
 			line = content[cursorY]
 		}
@@ -140,30 +151,39 @@ inputLoop:
 					changeX(cursorX - 1)
 				}
 			case termbox.KeyArrowRight:
-				if lineLength > xi+1 {
+				if lineLength >= xi+1 {
 					changeX(cursorX + 1)
 				}
 			case termbox.KeyEnter:
 				if totalLines < cursorY+1 {
-					content = append(content[:cursorY+1], []rune{'\n'})
+					if cursorY+1 > len(content) {
+						content = append(content, []rune{'\n'})
+					} else {
+						content = append(content[:cursorY+1], []rune{'\n'})
+					}
 				} else {
-					if lineLength > 1 {
-						breakLine := append(content[:cursorY], line[:xi+1])
-						if xi >= lineLength {
+					if lineLength > 0 {
+						if xi > lineLength {
+							breakLine := append(content[:cursorY], line[:xi-1])
+							content = append(breakLine, append([][]rune{{'\n'}}, content[cursorY+1:]...)...)
+						} else if xi == lineLength {
+							breakLine := append(content[:cursorY], line[:xi])
 							content = append(breakLine, append([][]rune{{'\n'}}, content[cursorY+1:]...)...)
 						} else {
-							content = append(breakLine, append([][]rune{line[xi+1:]}, content[cursorY+1:]...)...)
+							breakLine := append(content[:cursorY], line[:xi+1])
+							after := line[xi+1:]
+							content = append(breakLine, append([][]rune{after}, content[cursorY+1:]...)...)
 						}
 					} else {
-						lines := append(content[:cursorY+1], []rune{'\n'})
-						content = append(lines, content[cursorY+1:]...)
+						lines := append(content[:cursorY], []rune{'\n'})
+						content = append(lines, content[cursorY:]...)
 					}
 				}
 				cursorY++
 				changeX(startX)
 			case termbox.KeyBackspace, termbox.KeyBackspace2:
 				if cursorY == 0 && xi == 0 {
-					return
+					continue inputLoop
 				}
 				if xi == 0 {
 					var prevLines [][]rune
@@ -173,7 +193,7 @@ inputLoop:
 						prevLines = append(content[:cursorY-1], append(content[cursorY-1], line...))
 					}
 					content = append(prevLines, content[cursorY+1:]...)
-					changeX(len(content[cursorY-1]) + startX - 1)
+					changeX(len(content[cursorY-1]) + startX)
 					cursorY--
 					break
 				} else if lineLength > xi {
@@ -185,18 +205,28 @@ inputLoop:
 			case termbox.KeyCtrlS:
 				saveFile()
 			case termbox.KeySpace:
-				content[cursorY] = append(line[:xi+1], append([]rune{' '}, line[xi+1:]...)...)
+				if xi == lineLength {
+					content[cursorY] = append(line[:xi], rune(' '))
+				} else {
+					content[cursorY] = append(line[:xi+1], append([]rune{' '}, line[xi+1:]...)...)
+				}
 				changeX(cursorX + 1)
 			default:
 				if ev.Ch == 0 {
 					continue inputLoop
 				}
+
 				if cursorY >= len(content) {
 					content = append(content, []rune{ev.Ch})
 				} else if xi >= lineLength {
 					content[cursorY] = append(content[cursorY], ev.Ch)
 				} else {
-					content[cursorY] = append(content[cursorY][:xi+1], append([]rune{ev.Ch}, content[cursorY][xi+1:]...)...)
+					prev := content[cursorY][:xi+1]
+					if strings.TrimSpace(string(prev)) == "" {
+						content[cursorY] = append([]rune{ev.Ch}, content[cursorY][xi+1:]...)
+					} else {
+						content[cursorY] = append(prev, append([]rune{ev.Ch}, content[cursorY][xi+1:]...)...)
+					}
 				}
 				changeX(cursorX + 1)
 			}
