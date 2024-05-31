@@ -21,11 +21,11 @@ const (
 )
 
 var (
-	content  [][]rune
-	cursorY  int
-	cursorX  = startX
-	fileName string
-	scrollY  int
+	content          [][]rune
+	cursorY          int
+	cursorX          = startX
+	fileName         string
+	scrollY, scrollX int
 )
 
 func InitHandler(filename string) {
@@ -68,19 +68,19 @@ func displayContent() {
 		insertLineNum(0, 0)
 		termbox.SetCell(0, 0, ' ', termbox.ColorWhite, termbox.ColorDarkGray)
 	} else {
-		_, height := termbox.Size()
+		width, height := termbox.Size()
 
 		for y := 0; y < height && (scrollY+y) < len(content); y++ {
 			line := content[scrollY+y]
 			insertLineNum(scrollY+y, y)
 
-			for j, ch := range string(line) {
-				termbox.SetCell(j+5, y, ch, termbox.ColorDefault, termbox.ColorDefault)
+			for x := 0; x+scrollX < len(line) && x+startX < width; x++ {
+				termbox.SetCell(x+startX, y, rune(line[x+scrollX]), termbox.ColorDefault, termbox.ColorDefault)
 			}
 		}
 	}
 
-	termbox.SetCursor(cursorX, cursorY-scrollY)
+	termbox.SetCursor(cursorX-scrollX, cursorY-scrollY)
 }
 
 func saveFile() {
@@ -118,7 +118,7 @@ inputLoop:
 	for {
 		xi := cursorX - startX
 		totalLines := len(content)
-		_, height := termbox.Size()
+		width, height := termbox.Size()
 		if totalLines > cursorY {
 			lineLength = len(content[cursorY])
 			line = content[cursorY]
@@ -160,10 +160,16 @@ inputLoop:
 			case termbox.KeyArrowLeft:
 				if cursorX > startX {
 					changeX(cursorX - 1)
+					if cursorX < scrollX+startX {
+						scrollX--
+					}
 				}
 			case termbox.KeyArrowRight:
 				if lineLength >= xi+1 {
 					changeX(cursorX + 1)
+					if cursorX >= scrollX+width {
+						scrollX++
+					}
 				}
 			case termbox.KeyPgup:
 				cursorY -= height
@@ -229,6 +235,9 @@ inputLoop:
 					content = append(prevLines, content[cursorY+1:]...)
 					changeX(len(content[cursorY-1]) + startX)
 					cursorY--
+					if cursorX >= scrollX+width {
+						scrollX += len(content[cursorY-1])
+					}
 					break
 				} else if lineLength > xi {
 					content[cursorY] = append(content[cursorY][:xi-1], content[cursorY][xi:]...)
@@ -236,6 +245,13 @@ inputLoop:
 					content[cursorY] = content[cursorY][:xi-1]
 				}
 				changeX(cursorX - 1)
+				if cursorX < scrollX+startX {
+					if width > scrollX {
+						scrollX = 0
+					} else {
+						scrollX -= width
+					}
+				}
 			case termbox.KeyCtrlS:
 				saveFile()
 			case termbox.KeySpace:
