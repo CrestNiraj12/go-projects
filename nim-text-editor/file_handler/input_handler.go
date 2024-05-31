@@ -9,18 +9,13 @@ import (
 
 func promptSave() bool {
 	displayMessage("You have unsaved changes. Save before exiting? (y/n)")
-	for {
-		switch ev := termbox.PollEvent(); ev.Type {
-		case termbox.EventKey:
-			if ev.Ch == 'y' || ev.Ch == 'Y' {
-				return true
-			} else if ev.Ch == 'n' || ev.Ch == 'N' {
-				return false
-			}
-		case termbox.EventError:
-			return false
+	switch ev := termbox.PollEvent(); ev.Type {
+	case termbox.EventKey:
+		if ev.Ch == 'y' || ev.Ch == 'Y' {
+			return true
 		}
-	}
+  }
+  return false
 }
 
 func modifyWrapperFunc(handler interface{}, arg ...interface{}) {
@@ -32,13 +27,13 @@ func modifyWrapperFunc(handler interface{}, arg ...interface{}) {
 			if argValue, ok := arg[0].(rune); ok {
 				fn(argValue)
 			} else {
-        fmt.Println("Error: Expected an int argument.")
-        return
-      }
+				fmt.Println("Error: Expected an int argument.")
+				return
+			}
 		} else {
-      fmt.Println("Error: One argument expected for this function.")
-      return
-    }
+			fmt.Println("Error: One argument expected for this function.")
+			return
+		}
 	}
 	isModified = true
 }
