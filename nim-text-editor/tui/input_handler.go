@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	constants "nim-text-editor/constants"
 	"strings"
 	"unicode"
 
@@ -17,8 +18,9 @@ func promptSave() (prompt bool) {
 	return
 }
 
-func (ef *EditFile) handleSave(prompt bool) {
-	if !ef.isModified {
+func (tui *TUI) handleSave(prompt bool) {
+	ef := tui.ef
+	if !ef.IsModified {
 		return
 	}
 	var doSave = true
@@ -28,218 +30,228 @@ func (ef *EditFile) handleSave(prompt bool) {
 	if !doSave {
 		return
 	}
-	if bytes, ok := ef.Save(); ok {
-		ef.isModified = false
+	if bytes, ok := tui.Save(); ok {
+		ef.IsModified = false
 		message := fmt.Sprintf("Written %d bytes to file. Press any key to continue", len(bytes))
 		displayMessage(message)
 		termbox.PollEvent()
 	}
 }
 
-func (ef *EditFile) handleInput() {
-	var (
-		lineLength int
-		line       []rune
-	)
+func (tui *TUI) handleInput() {
+	ef := tui.ef
+	cur := ef.Cursor
+	startX := tui.startX
 
 	width, height := termbox.Size()
-
-	changeX := func(val int) {
-		if val < startX {
-			ef.cursorX = startX
-			return
-		}
-		ef.cursorX = val
-	}
+	_, lineLength := ef.GetLine()
 
 inputLoop:
 	for {
-		xi := ef.cursorX - startX
-		totalLines := len(ef.content)
-		if totalLines > ef.cursorY {
-			lineLength = len(ef.content[ef.cursorY])
-			line = ef.content[ef.cursorY]
-		}
-
-		onVerticalArrow := func(arrowType termbox.Key) {
-			if arrowType == termbox.KeyArrowDown {
-				if ef.cursorY < totalLines-1 {
-					ef.cursorY++
-					if ef.cursorY >= ef.scrollY+height {
-						ef.scrollY++
-					}
-				}
-			} else if arrowType == termbox.KeyArrowUp {
-				if ef.cursorY > 0 {
-					ef.cursorY--
-					if ef.cursorY < ef.scrollY {
-						ef.scrollY--
-					}
-				}
-			}
-
-			lineLength = len(ef.content[ef.cursorY])
-			if totalLines <= ef.cursorY || lineLength <= 0 {
-				changeX(startX)
-			} else if lineLength < xi {
-				changeX(lineLength + startX - 1)
-			}
-		}
-
-		onEnter := func() {
-			if totalLines < ef.cursorY+1 {
-				if ef.cursorY+1 > len(ef.content) {
-					ef.content = append(ef.content, []rune{'\n'})
-				} else {
-					ef.content = append(ef.content[:ef.cursorY+1], []rune{'\n'})
-				}
-			} else {
-				if lineLength > 0 {
-					if xi > lineLength {
-						breakLine := append(ef.content[:ef.cursorY], line[:xi-1])
-						ef.content = append(breakLine, append([][]rune{{'\n'}}, ef.content[ef.cursorY+1:]...)...)
-					} else if xi == lineLength {
-						breakLine := append(ef.content[:ef.cursorY], line[:xi])
-						ef.content = append(breakLine, append([][]rune{{'\n'}}, ef.content[ef.cursorY+1:]...)...)
-					} else {
-						breakLine := append(ef.content[:ef.cursorY], line[:xi+1])
-						after := line[xi+1:]
-						ef.content = append(breakLine, append([][]rune{after}, ef.content[ef.cursorY+1:]...)...)
-					}
-				} else {
-					lines := append(ef.content[:ef.cursorY], []rune{'\n'})
-					ef.content = append(lines, ef.content[ef.cursorY:]...)
-				}
-			}
-			ef.cursorY++
-			if ef.cursorY >= ef.scrollY+height {
-				ef.scrollY++
-			}
-			changeX(startX)
-		}
-
-		onBackspace := func() {
-			if xi == 0 {
-				var prevLines [][]rune
-				if len(strings.TrimSpace(string(line))) == 0 {
-					prevLines = append(ef.content[:ef.cursorY-1], ef.content[ef.cursorY-1])
-				} else {
-					prevLines = append(ef.content[:ef.cursorY-1], append(ef.content[ef.cursorY-1], line...))
-				}
-				ef.content = append(prevLines, ef.content[ef.cursorY+1:]...)
-				changeX(len(ef.content[ef.cursorY-1]) + startX)
-				ef.cursorY--
-				if ef.cursorX >= ef.scrollX+width {
-					ef.scrollX += len(ef.content[ef.cursorY-1])
-				}
-			} else {
-				if lineLength > xi {
-					ef.content[ef.cursorY] = append(ef.content[ef.cursorY][:xi-1], ef.content[ef.cursorY][xi:]...)
-				} else {
-					ef.content[ef.cursorY] = ef.content[ef.cursorY][:xi-1]
-				}
-				changeX(ef.cursorX - 1)
-				if ef.cursorX < ef.scrollX+startX {
-					if width > ef.scrollX {
-						ef.scrollX = 0
-					} else {
-						ef.scrollX -= width
-					}
-				}
-			}
-		}
-
-		onCharInput := func(char rune) {
-			if ef.cursorY >= len(ef.content) {
-				ef.content = append(ef.content, []rune{char})
-			} else if xi >= lineLength {
-				ef.content[ef.cursorY] = append(ef.content[ef.cursorY], char)
-			} else {
-				prev := ef.content[ef.cursorY][:xi+1]
-				if strings.TrimSpace(string(prev)) == "" {
-					ef.content[ef.cursorY] = append([]rune{char}, ef.content[ef.cursorY][xi+1:]...)
-				} else {
-					ef.content[ef.cursorY] = append(prev, append([]rune{char}, ef.content[ef.cursorY][xi+1:]...)...)
-				}
-			}
-			changeX(ef.cursorX + 1)
-		}
-
-		onSpace := func() {
-			if xi == lineLength {
-				ef.content[ef.cursorY] = append(line[:xi], rune(' '))
-			} else {
-				ef.content[ef.cursorY] = append(line[:xi+1], append([]rune{' '}, line[xi+1:]...)...)
-			}
-			changeX(ef.cursorX + 1)
-		}
 
 		switch ev := termbox.PollEvent(); ev.Type {
 		case termbox.EventKey:
 			switch ev.Key {
 			case termbox.KeyEsc, termbox.KeyCtrlQ:
-				ef.handleSave(true)
+				tui.handleSave(true)
 				break inputLoop
 			case termbox.KeyArrowUp:
-				onVerticalArrow(termbox.KeyArrowUp)
+				tui.onVerticalArrow(termbox.KeyArrowUp, height)
 			case termbox.KeyArrowDown:
-				onVerticalArrow(termbox.KeyArrowDown)
+				tui.onVerticalArrow(termbox.KeyArrowDown, height)
 			case termbox.KeyArrowLeft:
-				if ef.cursorX > startX {
-					changeX(ef.cursorX - 1)
-					if ef.cursorX < ef.scrollX+startX {
-						ef.scrollX--
+				if cur.CursorX > startX {
+					cur.ChangeX(cur.CursorX - 1)
+					if cur.CursorX < cur.ScrollX+startX {
+						cur.ScrollX--
 					}
 				}
 			case termbox.KeyArrowRight:
-				if lineLength >= xi+1 {
-					changeX(ef.cursorX + 1)
-					if ef.cursorX >= ef.scrollX+width {
-						ef.scrollX++
+				if lineLength >= ef.Cursor.CursorX+1 {
+					cur.ChangeX(cur.CursorX + 1)
+					if cur.CursorX >= cur.ScrollX+width {
+						cur.ScrollX++
 					}
 				}
 			case termbox.KeyPgup:
-				ef.cursorY -= height
-				ef.scrollY -= height
+				cur.CursorY -= height
+				cur.ScrollY -= height
 
-				if ef.cursorY < 0 {
-					ef.cursorY = 0
+				if cur.CursorY < 0 {
+					cur.CursorY = 0
 				}
-				if ef.scrollY < 0 {
-					ef.scrollY = 0
+				if cur.ScrollY < 0 {
+					cur.ScrollY = 0
 				}
 			case termbox.KeyPgdn:
-				ef.cursorY += height
-				ef.scrollY += height
+				cur.CursorY += height
+				cur.ScrollY += height
 
-				if ef.cursorY > len(ef.content) {
-					ef.cursorY = len(ef.content) - 1
+				if cur.CursorY > len(ef.Content) {
+					cur.CursorY = len(ef.Content) - 1
 				}
-				if ef.scrollY < len(ef.content)-height {
-					ef.scrollY = len(ef.content) - height
+				if cur.ScrollY < len(ef.Content)-height {
+					cur.ScrollY = len(ef.Content) - height
 				}
 			case termbox.KeyEnter:
-				ef.modifyWrapperFunc(onEnter)
+				tui.modifyWrapperFunc(tui.onEnter, height)
 			case termbox.KeyBackspace, termbox.KeyBackspace2:
-				if ef.cursorY == 0 && xi == 0 {
+				if cur.CursorY == 0 && cur.GetCurXIndex() == 0 {
 					continue inputLoop
 				}
-				ef.modifyWrapperFunc(onBackspace)
+				tui.modifyWrapperFunc(tui.onBackspace, width)
 			case termbox.KeyCtrlS:
-				ef.handleSave(false)
+				tui.handleSave(false)
 			case termbox.KeySpace:
-				ef.modifyWrapperFunc(onSpace)
+				tui.modifyWrapperFunc(tui.onSpace)
 			default:
 				if ev.Ch == 0 {
 					continue inputLoop
 				}
-				ef.modifyWrapperFunc(onCharInput, ev.Ch)
+				tui.modifyWrapperFunc(tui.onCharInput, ev.Ch)
 			}
 		case termbox.EventError:
 			fmt.Printf("Termbox error: %v\n", ev.Err)
 			break inputLoop
 		}
-		ef.displayContent()
+		tui.displayContent()
 	}
 	termbox.Close()
+}
+
+func (tui *TUI) onVerticalArrow(arrowType termbox.Key, height int) {
+	ef := tui.ef
+	cur := ef.Cursor
+	startX := tui.startX
+	totalLines := ef.GetTotalLines()
+	if arrowType == termbox.KeyArrowDown {
+		if cur.CursorY < totalLines-1 {
+			cur.CursorY++
+			if cur.CursorY >= cur.ScrollY+height {
+				cur.ScrollY++
+			}
+		}
+	} else if arrowType == termbox.KeyArrowUp {
+		if cur.CursorY > 0 {
+			cur.CursorY--
+			if cur.CursorY < cur.ScrollY {
+				cur.ScrollY--
+			}
+		}
+	}
+
+	lineLength := len(ef.Content[cur.CursorY])
+	if totalLines <= cur.CursorY || lineLength <= 0 {
+		cur.ChangeX(startX)
+	} else if lineLength < cur.CursorX {
+		cur.ChangeX(lineLength + startX - 1)
+	}
+
+}
+
+func (tui *TUI) onSpace() {
+	ef := tui.ef
+	cur := ef.Cursor
+	line, lineLength := ef.GetLine()
+	xi := cur.GetCurXIndex()
+	if xi == lineLength {
+		ef.Content[cur.CursorY] = append(line[:xi], rune(' '))
+	} else {
+		ef.Content[cur.CursorY] = append(line[:xi+1], append([]rune{' '}, line[xi+1:]...)...)
+	}
+	cur.ChangeX(cur.CursorX + 1)
+}
+
+func (tui *TUI) onEnter(height int) {
+	ef := tui.ef
+	cur := ef.Cursor
+	totalLines := ef.GetTotalLines()
+	line, lineLength := ef.GetLine()
+
+	if totalLines < cur.CursorY+1 {
+		if cur.CursorY+1 > len(ef.Content) {
+			ef.Content = append(ef.Content, []rune{'\n'})
+		} else {
+			ef.Content = append(ef.Content[:cur.CursorY+1], []rune{'\n'})
+		}
+	} else {
+		xi := cur.GetCurXIndex()
+		if lineLength > 0 {
+			if xi > lineLength {
+				breakLine := append(ef.Content[:cur.CursorY], line[:xi-1])
+				ef.Content = append(breakLine, append([][]rune{{'\n'}}, ef.Content[cur.CursorY+1:]...)...)
+			} else if xi == lineLength {
+				breakLine := append(ef.Content[:cur.CursorY], line[:xi])
+				ef.Content = append(breakLine, append([][]rune{{'\n'}}, ef.Content[cur.CursorY+1:]...)...)
+			} else {
+				breakLine := append(ef.Content[:cur.CursorY], line[:xi+1])
+				after := line[xi+1:]
+				ef.Content = append(breakLine, append([][]rune{after}, ef.Content[cur.CursorY+1:]...)...)
+			}
+		} else {
+			lines := append(ef.Content[:cur.CursorY], []rune{'\n'})
+			ef.Content = append(lines, ef.Content[cur.CursorY:]...)
+		}
+	}
+	cur.CursorY++
+	if cur.CursorY >= cur.ScrollY+height {
+		cur.ScrollY++
+	}
+	cur.ChangeX(constants.StartX)
+}
+
+func (tui *TUI) onBackspace(width int) {
+	ef := tui.ef
+	cur := ef.Cursor
+	xi := cur.GetCurXIndex()
+	line, lineLength := ef.GetLine()
+	if xi == 0 {
+		var prevLines [][]rune
+		if len(strings.TrimSpace(string(line))) == 0 {
+			prevLines = append(ef.Content[:cur.CursorY-1], ef.Content[cur.CursorY-1])
+		} else {
+			prevLines = append(ef.Content[:cur.CursorY-1], append(ef.Content[cur.CursorY-1], line...))
+		}
+		ef.Content = append(prevLines, ef.Content[cur.CursorY+1:]...)
+		cur.ChangeX(len(ef.Content[cur.CursorY-1]) + tui.startX)
+		cur.CursorY--
+		if cur.CursorX >= cur.ScrollX+width {
+			cur.ScrollX += len(ef.Content[cur.CursorY-1])
+		}
+	} else {
+		if lineLength > xi {
+			ef.Content[cur.CursorY] = append(ef.Content[cur.CursorY][:xi-1], ef.Content[cur.CursorY][xi:]...)
+		} else {
+			ef.Content[cur.CursorY] = ef.Content[cur.CursorY][:xi-1]
+		}
+		cur.ChangeX(cur.CursorX - 1)
+		if cur.CursorX >= cur.ScrollX+tui.startX {
+			return
+		}
+		if width > cur.ScrollX {
+			cur.ScrollX = 0
+			return
+		}
+		cur.ScrollX -= width
+	}
+}
+
+func (tui *TUI) onCharInput(char rune) {
+	ef := tui.ef
+	cur := ef.Cursor
+	_, lineLength := ef.GetLine()
+	xi := cur.GetCurXIndex()
+	if cur.CursorY >= len(ef.Content) {
+		ef.Content = append(ef.Content, []rune{char})
+	} else if xi >= lineLength {
+		ef.Content[cur.CursorY] = append(ef.Content[cur.CursorY], char)
+	} else {
+		prev := ef.Content[cur.CursorY][:xi+1]
+		if strings.TrimSpace(string(prev)) == "" {
+			ef.Content[cur.CursorY] = append([]rune{char}, ef.Content[cur.CursorY][xi+1:]...)
+		} else {
+			ef.Content[cur.CursorY] = append(prev, append([]rune{char}, ef.Content[cur.CursorY][xi+1:]...)...)
+		}
+	}
+	cur.ChangeX(cur.CursorX + 1)
 }

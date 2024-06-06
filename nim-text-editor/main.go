@@ -13,5 +13,5 @@ func main() {
 	}
 
 	filename := os.Args[1]
-	tui.Init(filename)
+  tui.NewTUI(filename).Init()
 }
