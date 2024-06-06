@@ -6,18 +6,6 @@ import (
 	"os"
 )
 
-// TODO
-// Remember cursor position
-// Implement better data structure - rope, tabulation, gap buffer, etc
-// Undo / Redo
-// Word wrap
-// Refactor code
-
-var (
-	content    [][]rune
-	isModified bool
-)
-
 func ReadFile(filename string) (content []byte, ok bool) {
 	contentByte, err := os.ReadFile(filename)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
