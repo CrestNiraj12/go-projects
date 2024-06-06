@@ -46,7 +46,6 @@ func (tui *TUI) handleInput() {
 
 inputLoop:
 	for {
-
 		switch ev := termbox.PollEvent(); ev.Type {
 		case termbox.EventKey:
 			switch ev.Key {
@@ -65,7 +64,7 @@ inputLoop:
 					}
 				}
 			case termbox.KeyArrowRight:
-				if lineLength >= ef.Cursor.CursorX+1 {
+				if lineLength >= cur.CursorX+1 {
 					cur.ChangeX(cur.CursorX + 1)
 					if cur.CursorX >= cur.ScrollX+width {
 						cur.ScrollX++
