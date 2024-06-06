@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	filehandler "nim-text-editor/file_handler"
+	tui "nim-text-editor/tui"
 	"os"
 )
 
@@ -13,5 +13,5 @@ func main() {
 	}
 
 	filename := os.Args[1]
-	filehandler.InitHandler(filename)
+	tui.Init(filename)
 }
