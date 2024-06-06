@@ -28,7 +28,7 @@ func (tui *TUI) handleSave(prompt bool) {
 	if !doSave {
 		return
 	}
-	if bytes, ok := tui.Save(); ok {
+	if bytes, ok := tui.HandleSave(); ok {
 		ef.IsModified = false
 		message := fmt.Sprintf("Written %d bytes to file. Press any key to continue", len(bytes))
 		displayMessage(message)

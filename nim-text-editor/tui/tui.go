@@ -94,7 +94,7 @@ func SplitLines(content string) []string {
 	return strings.Split(content, "\n")
 }
 
-func (tui *TUI) Save() (bytes []byte, ok bool) {
+func (tui *TUI) HandleSave() (bytes []byte, ok bool) {
 	for _, line := range tui.ef.Content {
 		bytes = append(bytes, []byte(strings.TrimSpace(string(line))+"\n")...)
 	}
