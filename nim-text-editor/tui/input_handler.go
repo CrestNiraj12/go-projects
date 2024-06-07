@@ -38,14 +38,18 @@ func (tui *TUI) handleSave(prompt bool) {
 
 func (tui *TUI) handleInput() {
 	ef := tui.ef
-	cur := ef.Cursor
 	startX := tui.startX
-
-	width, height := termbox.Size()
-	_, lineLength := ef.GetLine()
 
 inputLoop:
 	for {
+    totalLines := ef.GetTotalLines()
+		width, height := termbox.Size()
+    if width != tui.width || height != tui.height {
+      tui.width, tui.height = width, height
+    }
+		cur := ef.Cursor
+		_, lineLength := ef.GetLine()
+
 		switch ev := termbox.PollEvent(); ev.Type {
 		case termbox.EventKey:
 			switch ev.Key {
@@ -53,26 +57,22 @@ inputLoop:
 				tui.handleSave(true)
 				break inputLoop
 			case termbox.KeyArrowUp:
-				tui.onVerticalArrow(termbox.KeyArrowUp, height)
+				tui.onVerticalArrow(termbox.KeyArrowUp)
 			case termbox.KeyArrowDown:
-				tui.onVerticalArrow(termbox.KeyArrowDown, height)
+				tui.onVerticalArrow(termbox.KeyArrowDown)
 			case termbox.KeyArrowLeft:
 				if cur.CursorX > startX {
 					cur.ChangeX(cur.CursorX - 1)
-					if cur.CursorX < cur.ScrollX+startX {
-						cur.ScrollX--
-					}
+					tui.scrollX()
 				}
 			case termbox.KeyArrowRight:
-				if lineLength >= cur.CursorX+1 {
+				if lineLength >= cur.GetCurXIndex()+1 {
 					cur.ChangeX(cur.CursorX + 1)
-					if cur.CursorX >= cur.ScrollX+width {
-						cur.ScrollX++
-					}
+					tui.scrollX()
 				}
 			case termbox.KeyPgup:
-				cur.CursorY -= height
-				cur.ScrollY -= height
+				cur.CursorY -= tui.height
+				cur.ScrollY -= tui.height
 
 				if cur.CursorY < 0 {
 					cur.CursorY = 0
@@ -81,22 +81,22 @@ inputLoop:
 					cur.ScrollY = 0
 				}
 			case termbox.KeyPgdn:
-				cur.CursorY += height
-				cur.ScrollY += height
+				cur.CursorY += tui.height
+				cur.ScrollY += tui.height
 
-				if cur.CursorY > len(ef.Content) {
-					cur.CursorY = len(ef.Content) - 1
+				if cur.CursorY > totalLines {
+					cur.CursorY = totalLines - 1
 				}
-				if cur.ScrollY < len(ef.Content)-height {
-					cur.ScrollY = len(ef.Content) - height
+				if cur.ScrollY < totalLines-tui.height {
+					cur.ScrollY = totalLines - tui.height
 				}
 			case termbox.KeyEnter:
-				tui.modifyWrapperFunc(tui.onEnter, height)
+				tui.modifyWrapperFunc(tui.onEnter)
 			case termbox.KeyBackspace, termbox.KeyBackspace2:
 				if cur.CursorY == 0 && cur.GetCurXIndex() == 0 {
 					continue inputLoop
 				}
-				tui.modifyWrapperFunc(tui.onBackspace, width)
+				tui.modifyWrapperFunc(tui.onBackspace)
 			case termbox.KeyCtrlS:
 				tui.handleSave(false)
 			case termbox.KeySpace:

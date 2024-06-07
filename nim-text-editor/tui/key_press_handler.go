@@ -7,7 +7,7 @@ import (
 	"github.com/nsf/termbox-go"
 )
 
-func (tui *TUI) onVerticalArrow(arrowType termbox.Key, height int) {
+func (tui *TUI) onVerticalArrow(arrowType termbox.Key) {
 	ef := tui.ef
 	cur := ef.Cursor
 	startX := tui.startX
@@ -15,7 +15,7 @@ func (tui *TUI) onVerticalArrow(arrowType termbox.Key, height int) {
 	if arrowType == termbox.KeyArrowDown {
 		if cur.CursorY < totalLines-1 {
 			cur.CursorY++
-			if cur.CursorY >= cur.ScrollY+height {
+			if cur.CursorY >= cur.ScrollY+tui.height {
 				cur.ScrollY++
 			}
 		}
@@ -28,13 +28,14 @@ func (tui *TUI) onVerticalArrow(arrowType termbox.Key, height int) {
 		}
 	}
 
-	lineLength := len(ef.Content[cur.CursorY])
+	_, lineLength := ef.GetLine()
 	if totalLines <= cur.CursorY || lineLength <= 0 {
 		cur.ChangeX(startX)
-	} else if lineLength < cur.CursorX {
+	} else if lineLength < cur.GetCurXIndex() {
 		cur.ChangeX(lineLength + startX - 1)
 	}
 
+	tui.scrollX()
 }
 
 func (tui *TUI) onSpace() {
@@ -50,7 +51,7 @@ func (tui *TUI) onSpace() {
 	cur.ChangeX(cur.CursorX + 1)
 }
 
-func (tui *TUI) onEnter(height int) {
+func (tui *TUI) onEnter() {
 	ef := tui.ef
 	cur := ef.Cursor
 	totalLines := ef.GetTotalLines()
@@ -82,13 +83,13 @@ func (tui *TUI) onEnter(height int) {
 		}
 	}
 	cur.CursorY++
-	if cur.CursorY >= cur.ScrollY+height {
+	if cur.CursorY >= cur.ScrollY+tui.height {
 		cur.ScrollY++
 	}
 	cur.ChangeX(constants.StartX)
 }
 
-func (tui *TUI) onBackspace(width int) {
+func (tui *TUI) onBackspace() {
 	ef := tui.ef
 	cur := ef.Cursor
 	xi := cur.GetCurXIndex()
@@ -103,7 +104,7 @@ func (tui *TUI) onBackspace(width int) {
 		ef.Content = append(prevLines, ef.Content[cur.CursorY+1:]...)
 		cur.ChangeX(len(ef.Content[cur.CursorY-1]) + tui.startX)
 		cur.CursorY--
-		if cur.CursorX >= cur.ScrollX+width {
+		if cur.CursorX >= cur.ScrollX+tui.width {
 			cur.ScrollX += len(ef.Content[cur.CursorY-1])
 		}
 	} else {
@@ -116,11 +117,11 @@ func (tui *TUI) onBackspace(width int) {
 		if cur.CursorX >= cur.ScrollX+tui.startX {
 			return
 		}
-		if width > cur.ScrollX {
+		if tui.width > cur.ScrollX {
 			cur.ScrollX = 0
 			return
 		}
-		cur.ScrollX -= width
+		cur.ScrollX -= tui.width
 	}
 }
 
@@ -142,4 +143,14 @@ func (tui *TUI) onCharInput(char rune) {
 		}
 	}
 	cur.ChangeX(cur.CursorX + 1)
+}
+
+func (tui *TUI) scrollX() {
+	cur := tui.ef.Cursor
+	startX := tui.startX
+	if cur.CursorX < cur.ScrollX+startX {
+		cur.ScrollX--
+	} else if cur.CursorX >= cur.ScrollX+tui.width {
+		cur.ScrollX++
+	}
 }

@@ -12,8 +12,8 @@ import (
 )
 
 type TUI struct {
-	ef     *editFile.EditFile
-	startX int
+	ef                    *editFile.EditFile
+	startX, width, height int
 }
 
 func NewTUI(filename string) *TUI {
@@ -65,13 +65,13 @@ func (tui *TUI) displayContent() {
 		termbox.SetCell(0, 0, ' ', termbox.ColorWhite, termbox.ColorDarkGray)
 		return
 	} else {
-		width, height := termbox.Size()
+		tui.width, tui.height = termbox.Size()
 
-		for y := 0; y < height && (cur.ScrollY+y) < len(ef.Content); y++ {
+		for y := 0; y < tui.height && (cur.ScrollY+y) < len(ef.Content); y++ {
 			line := ef.Content[cur.ScrollY+y]
 			insertLineNum(cur.ScrollY+y, y)
 
-			for x := 0; x+cur.ScrollX < len(line) && x+constants.StartX < width; x++ {
+			for x := 0; x+cur.ScrollX < len(line) && x+constants.StartX < tui.width; x++ {
 				termbox.SetCell(x+constants.StartX, y, rune(line[x+cur.ScrollX]), termbox.ColorDefault, termbox.ColorDefault)
 			}
 		}
@@ -113,18 +113,6 @@ func (tui *TUI) modifyWrapperFunc(handler interface{}, arg ...interface{}) {
 				fn(argValue)
 			} else {
 				fmt.Println("Error: Expected an rune argument.")
-				return
-			}
-		} else {
-			fmt.Println("Error: One argument expected for this function.")
-			return
-		}
-  case func(int):
-		if len(arg) == 1 {
-			if argValue, ok := arg[0].(int); ok {
-				fn(argValue)
-			} else {
-				fmt.Println("Error: Expected an int argument.")
 				return
 			}
 		} else {
