@@ -8,34 +8,59 @@ import (
 )
 
 func (tui *TUI) onVerticalArrow(arrowType termbox.Key) {
+	startX := tui.startX
+	cur := tui.ef.Cursor
+	switch arrowType {
+	case termbox.KeyArrowDown:
+		tui.moveDown()
+		tui.moveVertically()
+	case termbox.KeyArrowUp:
+		tui.moveUp()
+		tui.moveVertically()
+	case termbox.KeyArrowLeft:
+		tui.moveUp()
+		_, lineLength := tui.ef.GetLine()
+		cur.ChangeX(lineLength + startX - 1)
+	case termbox.KeyArrowRight:
+		tui.moveDown()
+		cur.ChangeX(startX)
+	}
+	_, lineLength := tui.ef.GetLine()
+	tui.scrollX(startX + lineLength)
+}
+
+func (tui *TUI) moveVertically() {
 	ef := tui.ef
 	cur := ef.Cursor
 	startX := tui.startX
 	totalLines := ef.GetTotalLines()
-	if arrowType == termbox.KeyArrowDown {
-		if cur.CursorY < totalLines-1 {
-			cur.CursorY++
-			if cur.CursorY >= cur.ScrollY+tui.height {
-				cur.ScrollY++
-			}
-		}
-	} else if arrowType == termbox.KeyArrowUp {
-		if cur.CursorY > 0 {
-			cur.CursorY--
-			if cur.CursorY < cur.ScrollY {
-				cur.ScrollY--
-			}
-		}
-	}
-
 	_, lineLength := ef.GetLine()
 	if totalLines <= cur.CursorY || lineLength <= 0 {
 		cur.ChangeX(startX)
 	} else if lineLength < cur.GetCurXIndex() {
 		cur.ChangeX(lineLength + startX - 1)
 	}
+}
 
-	tui.scrollX()
+func (tui *TUI) moveDown() {
+	cur := tui.ef.Cursor
+	totalLines := tui.ef.GetTotalLines()
+	if cur.CursorY < totalLines-1 {
+		cur.CursorY++
+		if cur.CursorY >= cur.ScrollY+tui.height {
+			cur.ScrollY++
+		}
+	}
+}
+
+func (tui *TUI) moveUp() {
+	cur := tui.ef.Cursor
+	if cur.CursorY > 0 {
+		cur.CursorY--
+		if cur.CursorY < cur.ScrollY {
+			cur.ScrollY--
+		}
+	}
 }
 
 func (tui *TUI) onSpace() {
@@ -143,14 +168,22 @@ func (tui *TUI) onCharInput(char rune) {
 		}
 	}
 	cur.ChangeX(cur.CursorX + 1)
+	tui.scrollX(1)
 }
 
-func (tui *TUI) scrollX() {
+func (tui *TUI) scrollX(val int) {
 	cur := tui.ef.Cursor
-	startX := tui.startX
-	if cur.CursorX < cur.ScrollX+startX {
-		cur.ScrollX--
-	} else if cur.CursorX >= cur.ScrollX+tui.width {
-		cur.ScrollX++
+	if cur.CursorX >= tui.width+cur.ScrollX {
+		if val == 1 {
+			cur.ScrollX++
+		} else {
+			cur.ScrollX = val-tui.width
+		}
+	} else if cur.GetCurXIndex() < cur.ScrollX {
+		if val == 1 {
+			cur.ScrollX--
+		} else {
+			cur.ScrollX = 0
+		}
 	}
 }

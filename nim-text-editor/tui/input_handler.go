@@ -42,11 +42,11 @@ func (tui *TUI) handleInput() {
 
 inputLoop:
 	for {
-    totalLines := ef.GetTotalLines()
+		totalLines := ef.GetTotalLines()
 		width, height := termbox.Size()
-    if width != tui.width || height != tui.height {
-      tui.width, tui.height = width, height
-    }
+		if width != tui.width || height != tui.height {
+			tui.width, tui.height = width, height
+		}
 		cur := ef.Cursor
 		_, lineLength := ef.GetLine()
 
@@ -63,12 +63,16 @@ inputLoop:
 			case termbox.KeyArrowLeft:
 				if cur.CursorX > startX {
 					cur.ChangeX(cur.CursorX - 1)
-					tui.scrollX()
-				}
+					tui.scrollX(1)
+				} else {
+          tui.onVerticalArrow(termbox.KeyArrowLeft)
+        }
 			case termbox.KeyArrowRight:
 				if lineLength >= cur.GetCurXIndex()+1 {
 					cur.ChangeX(cur.CursorX + 1)
-					tui.scrollX()
+					tui.scrollX(1)
+				} else {
+          tui.onVerticalArrow(termbox.KeyArrowRight)
 				}
 			case termbox.KeyPgup:
 				cur.CursorY -= tui.height
