@@ -116,6 +116,7 @@ func (tui *TUI) onEnter() {
 		cur.ScrollY++
 	}
 	cur.ChangeX(constants.StartX)
+  tui.scrollX(tui.startX + lineLength)
 }
 
 func (tui *TUI) onBackspace() {
