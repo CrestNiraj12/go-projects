@@ -71,6 +71,10 @@ func (tui *TUI) onSpace() {
 	if xi == lineLength {
 		ef.Content[cur.CursorY] = append(line[:xi], rune(' '))
 	} else {
+    after := xi + 1
+    if after > lineLength {
+      return
+    }
 		ef.Content[cur.CursorY] = append(line[:xi+1], append([]rune{' '}, line[xi+1:]...)...)
 	}
 	cur.ChangeX(cur.CursorX + 1)
