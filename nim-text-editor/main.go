@@ -2,9 +2,16 @@ package main
 
 import (
 	"fmt"
-	filehandler "nim-text-editor/file_handler"
+	tui "nim-text-editor/tui"
 	"os"
 )
+// TODO
+// Fix cursor and space issue
+// Remember cursor position
+// Implement better data structure - rope, tabulation, gap buffer, etc
+// Undo / Redo
+// Word wrap
+// Refactor code
 
 func main() {
 	if len(os.Args) < 2 {
@@ -13,5 +20,5 @@ func main() {
 	}
 
 	filename := os.Args[1]
-	filehandler.InitHandler(filename)
+  tui.NewTUI(filename).Init()
 }
