@@ -13,6 +13,7 @@ type EditFile struct {
 	Content    [][]rune
 	IsModified bool
 	FileName   string
+	XMemoCur   int
 }
 
 func (ef *EditFile) GetTotalLines() int {
@@ -29,6 +30,14 @@ func (ef *EditFile) GetLine() (line []rune, lineLength int) {
 
 func (cur *FileCursor) GetCurXIndex() int {
 	return cur.CursorX - constants.StartX
+}
+
+func (ef *EditFile) SetXMemo() {
+	curX := ef.Cursor.CursorX
+	if curX <= ef.XMemoCur {
+		return
+	}
+	ef.XMemoCur = curX
 }
 
 func (cur *FileCursor) ChangeX(val int) {

@@ -36,9 +36,16 @@ func (tui *TUI) moveVertically() {
 	totalLines := ef.GetTotalLines()
 	_, lineLength := ef.GetLine()
 	if totalLines <= cur.CursorY || lineLength <= 0 {
+		ef.SetXMemo()
 		cur.ChangeX(startX)
 	} else if lineLength < cur.GetCurXIndex() {
+		ef.SetXMemo()
 		cur.ChangeX(lineLength + startX - 1)
+	} else {
+		if ef.XMemoCur == 0 {
+			return
+		}
+		cur.ChangeX(ef.XMemoCur)
 	}
 }
 
@@ -71,10 +78,10 @@ func (tui *TUI) onSpace() {
 	if xi == lineLength {
 		ef.Content[cur.CursorY] = append(line[:xi], rune(' '))
 	} else {
-    after := xi + 1
-    if after > lineLength {
-      return
-    }
+		after := xi + 1
+		if after > lineLength {
+			return
+		}
 		ef.Content[cur.CursorY] = append(line[:xi+1], append([]rune{' '}, line[xi+1:]...)...)
 	}
 	cur.ChangeX(cur.CursorX + 1)
@@ -116,7 +123,7 @@ func (tui *TUI) onEnter() {
 		cur.ScrollY++
 	}
 	cur.ChangeX(constants.StartX)
-  tui.scrollX(tui.startX + lineLength)
+	tui.scrollX(tui.startX + lineLength)
 }
 
 func (tui *TUI) onBackspace() {
@@ -182,7 +189,7 @@ func (tui *TUI) scrollX(val int) {
 		if val == 1 {
 			cur.ScrollX++
 		} else {
-			cur.ScrollX = val-tui.width
+			cur.ScrollX = val - tui.width
 		}
 	} else if cur.GetCurXIndex() < cur.ScrollX {
 		if val == 1 {

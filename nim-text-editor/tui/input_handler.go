@@ -65,15 +65,17 @@ inputLoop:
 					cur.ChangeX(cur.CursorX - 1)
 					tui.scrollX(1)
 				} else {
-          tui.onVerticalArrow(termbox.KeyArrowLeft)
-        }
+					tui.onVerticalArrow(termbox.KeyArrowLeft)
+				}
+				ef.XMemoCur = cur.CursorX
 			case termbox.KeyArrowRight:
 				if lineLength >= cur.GetCurXIndex()+1 {
 					cur.ChangeX(cur.CursorX + 1)
 					tui.scrollX(1)
 				} else {
-          tui.onVerticalArrow(termbox.KeyArrowRight)
+					tui.onVerticalArrow(termbox.KeyArrowRight)
 				}
+				ef.XMemoCur = cur.CursorX
 			case termbox.KeyPgup:
 				cur.CursorY -= tui.height
 				cur.ScrollY -= tui.height
