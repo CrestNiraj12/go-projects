@@ -2,7 +2,11 @@ package editFile
 
 import (
 	constants "nim-text-editor/constants"
+	"strings"
 )
+
+const ORIGINAL = "original"
+const ADD = "add"
 
 type FileCursor struct {
 	CursorX, CursorY, ScrollY, ScrollX int
@@ -10,21 +14,76 @@ type FileCursor struct {
 
 type EditFile struct {
 	Cursor     *FileCursor
-	Content    [][]rune
+	Content    *ContentTable
 	IsModified bool
 	FileName   string
 	XMemoCur   int
 }
 
-func (ef *EditFile) GetTotalLines() int {
-	return len(ef.Content)
+type ContentTable struct {
+	Original []rune
+	Add      []rune
+	Pieces   []*PieceTable
 }
 
-func (ef *EditFile) GetLine() (line []rune, lineLength int) {
-	if ef.GetTotalLines() > ef.Cursor.CursorY {
-		line = ef.Content[ef.Cursor.CursorY]
-		lineLength = len(line)
+type PieceTable struct {
+	Start, Length int
+	Source        string
+}
+
+func (ef *EditFile) GetTotalLines() int {
+	var buffer []rune
+	var lines int
+
+	countLines := func(text []rune) int {
+		return len(SplitLines(string(text)))
 	}
+
+	for _, piece := range ef.Content.Pieces {
+		if piece.Source == ORIGINAL {
+			buffer = ef.Content.Original
+		} else {
+			buffer = ef.Content.Add
+		}
+		textSegment := buffer[piece.Start : piece.Start+piece.Length]
+		lines += countLines(textSegment) - 1
+	}
+	return lines + 1
+}
+
+func (ef *EditFile) GetFileLength() (length int) {
+	for _, piece := range ef.Content.Pieces {
+		length += piece.Length
+	}
+	return
+}
+
+func (ef *EditFile) GetAddLength() int {
+	return len(string(ef.Content.Add))
+}
+
+func (ef *EditFile) GetOriginalLength() int {
+	return len(string(ef.Content.Original))
+}
+
+func SplitLines(content string) []string {
+	return strings.Split(content, "\n")
+}
+
+func (ef *EditFile) GetLine(offset int) (line []rune, lineLength int) {
+	var buffer, textSegment []rune
+
+	for _, piece := range ef.Content.Pieces {
+		if piece.Source == ORIGINAL {
+			buffer = ef.Content.Original
+		} else {
+			buffer = ef.Content.Add
+		}
+		textSegment = append(textSegment, buffer[piece.Start:piece.Start+piece.Length]...)
+	}
+	lineString := SplitLines(string(textSegment))[ef.Cursor.CursorY+offset]
+	line = []rune(lineString)
+	lineLength = len(lineString)
 	return
 }
 

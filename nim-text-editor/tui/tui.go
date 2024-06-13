@@ -33,10 +33,9 @@ func (tui *TUI) Init() {
 		return
 	}
 
-	for _, line := range SplitLines(string(contentByte)) {
-		ef.Content = append(ef.Content, []rune(line))
-	}
-
+	content := string(contentByte)
+	ef.Content.Original = []rune(content)
+	ef.Content.Pieces = append(ef.Content.Pieces, &editFile.PieceTable{Start: 0, Length: len(content), Source: editFile.ORIGINAL})
 	tui.displayContent()
 	tui.handleInput()
 }
@@ -60,14 +59,15 @@ func (tui *TUI) displayContent() {
 	defer termbox.Flush()
 
 	cur := *(ef.Cursor)
-	if len(ef.Content) == 0 {
+	totalLines := ef.GetTotalLines()
+	if totalLines == 0 {
 		insertLineNum(0, 0)
 		termbox.SetCell(0, 0, ' ', termbox.ColorWhite, termbox.ColorDarkGray)
 		return
 	} else {
 		tui.width, tui.height = termbox.Size()
 
-		for y := 0; y < tui.height && (cur.ScrollY+y) < len(ef.Content); y++ {
+		for y := 0; y < tui.height && (cur.ScrollY+y) < ef.GetTotalLines(); y++ {
 			line := ef.Content[cur.ScrollY+y]
 			insertLineNum(cur.ScrollY+y, y)
 
@@ -88,10 +88,6 @@ func displayMessage(message string) {
 		}
 	}
 	termbox.Flush()
-}
-
-func SplitLines(content string) []string {
-	return strings.Split(content, "\n")
 }
 
 func (tui *TUI) HandleSave() (bytes []byte, ok bool) {
