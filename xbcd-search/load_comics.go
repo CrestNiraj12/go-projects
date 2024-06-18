@@ -18,12 +18,13 @@ type Comic struct {
 }
 
 func LoadComics() {
+  var fileName string
 	if len(os.Args) <= 2 {
-		fmt.Fprintln(os.Stderr, "Usage: go run . load_comics <json filename>")
-		os.Exit(-1)
+		fileName = "comics.json"
+	} else {
+		fileName = os.Args[2]
 	}
 
-	fileName := os.Args[2]
 	var count, errCount int
 	var comics []*Comic
 
