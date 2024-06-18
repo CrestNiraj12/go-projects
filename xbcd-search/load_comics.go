@@ -25,10 +25,12 @@ func LoadComics() {
 
 	fileName := os.Args[2]
 	var count, errCount int
-	var bytes []byte
+	var comics []*Comic
+
+	fmt.Println("Reading comics...")
 
 	for {
-		if errCount < 5 {
+		if errCount >= 5 {
 			break
 		}
 
@@ -44,22 +46,20 @@ func LoadComics() {
 
 		defer resp.Body.Close()
 
-		var response Comic
+		var response *Comic
 		if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
 			fmt.Fprintf(os.Stderr, "Skipping #%d | Failed while decoding\n", count)
 			errCount++
 			continue
 		}
 
-		mResp, err := json.Marshal(response)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Skipping #%d | Failed while marshaling\n", count)
-			errCount++
-			continue
-		}
+		comics = append(comics, response)
+	}
 
-		bytes = append(bytes, append(mResp, byte('\n'))...)
-		fmt.Printf("Read %d comics!\n", count)
+	bytes, err := json.Marshal(&comics)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Failed while unmarshaling")
+		return
 	}
 
 	if err := os.WriteFile(fileName, bytes, 0644); err != nil {
@@ -67,5 +67,5 @@ func LoadComics() {
 		return
 	}
 
-	fmt.Printf("Successfully loaded %d comics!\n", count-errCount)
+	fmt.Printf("Successfully loaded %d comics!\n", len(comics))
 }

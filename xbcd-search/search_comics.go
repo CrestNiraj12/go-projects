@@ -20,26 +20,24 @@ func SearchComics() {
 		os.Exit(-1)
 	}
 
-  var count int
-	data := strings.Split(string(bytes), "\n")
-	for _, d := range data {
-		var item Comic
+	var count int
+	var item []*Comic
 
-		if err := json.Unmarshal([]byte(d), &item); err != nil {
-			fmt.Fprintln(os.Stderr, "Failed to unmarshal data")
-			continue
-		}
+	if err := json.Unmarshal(bytes, &item); err != nil {
+		fmt.Fprintln(os.Stderr, "Failed to unmarshal data")
+	}
 
+	for _, c := range item {
 		for _, k := range keywords {
-			if !contains(item.Title, k) && !contains(item.Transcript, k) {
+			if !contains(c.Title, k) && !contains(c.Transcript, k) {
 				continue
 			}
-      fmt.Printf("%d. URL: %s | Date: %4s/%2s/%2s | Title: %s\n", count+1, item.ImageURL, item.Year, item.Month, item.Day, item.Title)
-      count++
+			fmt.Printf("%d. Title: %s | Date: %4s/%02s/%02s | URL: %s\n", count+1, c.Title, c.Year, c.Month, c.Day, c.ImageURL)
+			count++
 			break
 		}
 	}
-  fmt.Printf("Found %d comics!\n", count)
+	fmt.Printf("Found %d comics!\n", count)
 }
 
 func contains(v string, k string) bool {
