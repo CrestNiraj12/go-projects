@@ -30,7 +30,7 @@ func LoadComics() {
 	fmt.Println("Reading comics...")
 
 	for {
-		if errCount >= 5 {
+		if errCount >= 2 {
 			break
 		}
 
