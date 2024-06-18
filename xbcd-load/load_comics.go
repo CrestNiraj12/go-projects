@@ -28,6 +28,10 @@ func LoadComics() {
 	var bytes []byte
 
 	for {
+		if errCount < 5 {
+			break
+		}
+
 		count++
 		url := fmt.Sprintf("https://xkcd.com/%d/info.0.json", count)
 		resp, err := http.Get(url)
@@ -35,10 +39,7 @@ func LoadComics() {
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Skipping #%d | Status: %d\n", count, resp.StatusCode)
 			errCount++
-			if errCount < 5 {
-				continue
-			}
-			break
+			continue
 		}
 
 		defer resp.Body.Close()
@@ -47,20 +48,14 @@ func LoadComics() {
 		if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
 			fmt.Fprintf(os.Stderr, "Skipping #%d | Failed while decoding\n", count)
 			errCount++
-			if errCount < 5 {
-				continue
-			}
-		  break	
+			continue
 		}
 
 		mResp, err := json.Marshal(response)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Skipping #%d | Failed while marshaling\n", count)
 			errCount++
-			if errCount < 5 {
-				continue
-			}
-		  break	
+			continue
 		}
 
 		bytes = append(bytes, append(mResp, byte('\n'))...)
@@ -72,5 +67,5 @@ func LoadComics() {
 		return
 	}
 
-	fmt.Printf("Successfully loaded %d comics!\n", count)
+	fmt.Printf("Successfully loaded %d comics!\n", count-errCount)
 }
