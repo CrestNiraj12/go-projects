@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"sync"
 )
 
 type Comic struct {
@@ -18,7 +19,7 @@ type Comic struct {
 }
 
 func LoadComics() {
-  var fileName string
+	var fileName string
 	if len(os.Args) <= 2 {
 		fileName = "comics.json"
 	} else {
@@ -27,36 +28,50 @@ func LoadComics() {
 
 	var count, errCount int
 	var comics []*Comic
+	var wg sync.WaitGroup
+	var mu sync.Mutex
 
 	fmt.Println("Reading comics...")
 
 	for {
-		if errCount >= 2 {
+		if errCount >= 2 || count >= 5000 {
 			break
 		}
-
 		count++
+
+		wg.Add(1)
 		url := fmt.Sprintf("https://xkcd.com/%d/info.0.json", count)
-		resp, err := http.Get(url)
+		go func(url string, count int) {
+			fmt.Printf("Reading comic #%d\n", count)
 
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Skipping #%d | Status: %d\n", count, resp.StatusCode)
-			errCount++
-			continue
-		}
+			defer wg.Done()
+			resp, err := http.Get(url)
 
-		defer resp.Body.Close()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Skipping #%d | Status: %d\n", count, resp.StatusCode)
+				mu.Lock()
+				errCount++
+				mu.Unlock()
+				return
+			}
 
-		var response *Comic
-		if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-			fmt.Fprintf(os.Stderr, "Skipping #%d | Failed while decoding\n", count)
-			errCount++
-			continue
-		}
+			defer resp.Body.Close()
+			var response *Comic
+			if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+				fmt.Fprintf(os.Stderr, "Skipping #%d | Failed while decoding\n", count)
+				mu.Lock()
+				errCount++
+				mu.Unlock()
+				return
+			}
 
-		comics = append(comics, response)
+			mu.Lock()
+			comics = append(comics, response)
+			mu.Unlock()
+		}(url, count)
 	}
 
+	wg.Wait()
 	bytes, err := json.Marshal(&comics)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Failed while unmarshaling")
