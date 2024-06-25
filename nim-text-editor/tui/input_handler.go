@@ -7,8 +7,8 @@ import (
 	"github.com/nsf/termbox-go"
 )
 
-func promptSave() (prompt bool) {
-	displayMessage("You have unsaved changes. Save before exiting? (y/n)")
+func (tui *TUI) promptSave() (prompt bool) {
+	tui.displayMessage("You have unsaved changes. Save before exiting? (y/n)")
 	switch ev := termbox.PollEvent(); ev.Type {
 	case termbox.EventKey:
 		prompt = unicode.ToLower(ev.Ch) == 'y'
@@ -23,7 +23,7 @@ func (tui *TUI) handleSave(prompt bool) {
 	}
 	var doSave = true
 	if prompt {
-		doSave = promptSave()
+		doSave = tui.promptSave()
 	}
 	if !doSave {
 		return
@@ -31,7 +31,7 @@ func (tui *TUI) handleSave(prompt bool) {
 	if bytes, ok := tui.HandleSave(); ok {
 		ef.IsModified = false
 		message := fmt.Sprintf("Written %d bytes to file. Press any key to continue", len(bytes))
-		displayMessage(message)
+		tui.displayMessage(message)
 		termbox.PollEvent()
 	}
 }
@@ -42,13 +42,13 @@ func (tui *TUI) handleInput() {
 
 inputLoop:
 	for {
-		totalLines := ef.GetTotalLines()
+		_, totalLines := ef.GetContent()
 		width, height := termbox.Size()
 		if width != tui.width || height != tui.height {
 			tui.width, tui.height = width, height
 		}
 		cur := ef.Cursor
-		_, lineLength := ef.GetLine()
+		_, lineLength := ef.GetLine(0)
 
 		switch ev := termbox.PollEvent(); ev.Type {
 		case termbox.EventKey:

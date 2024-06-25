@@ -21,34 +21,14 @@ type EditFile struct {
 }
 
 type ContentTable struct {
-	Original []rune
-	Add      []rune
+	Original *[]rune
+	Add      *[]rune
 	Pieces   []*PieceTable
 }
 
 type PieceTable struct {
 	Start, Length int
 	Source        string
-}
-
-func (ef *EditFile) GetTotalLines() int {
-	var buffer []rune
-	var lines int
-
-	countLines := func(text []rune) int {
-		return len(SplitLines(string(text)))
-	}
-
-	for _, piece := range ef.Content.Pieces {
-		if piece.Source == ORIGINAL {
-			buffer = ef.Content.Original
-		} else {
-			buffer = ef.Content.Add
-		}
-		textSegment := buffer[piece.Start : piece.Start+piece.Length]
-		lines += countLines(textSegment) - 1
-	}
-	return lines + 1
 }
 
 func (ef *EditFile) GetFileLength() (length int) {
@@ -59,31 +39,42 @@ func (ef *EditFile) GetFileLength() (length int) {
 }
 
 func (ef *EditFile) GetAddLength() int {
-	return len(string(ef.Content.Add))
+	return len(string(*ef.Content.Add))
 }
 
 func (ef *EditFile) GetOriginalLength() int {
-	return len(string(ef.Content.Original))
+	return len(string(*ef.Content.Original))
 }
 
-func SplitLines(content string) []string {
+func (ef *EditFile) SplitLines(content string) []string {
 	return strings.Split(content, "\n")
 }
 
 func (ef *EditFile) GetLine(offset int) (line []rune, lineLength int) {
-	var buffer, textSegment []rune
+	content, _ := ef.GetContent()
+	lineString := ef.SplitLines(string(content))[ef.Cursor.CursorY+offset]
+	line = []rune(lineString)
+	lineLength = len(lineString)
+	return
+}
+
+func (ef *EditFile) GetContent() (content []rune, totalLines int) {
+	var buffer []rune
+
+	countLines := func(text []rune) int {
+		return len(ef.SplitLines(string(text)))
+	}
 
 	for _, piece := range ef.Content.Pieces {
 		if piece.Source == ORIGINAL {
-			buffer = ef.Content.Original
+			buffer = *ef.Content.Original
 		} else {
-			buffer = ef.Content.Add
+			buffer = *ef.Content.Add
 		}
-		textSegment = append(textSegment, buffer[piece.Start:piece.Start+piece.Length]...)
+		textSegment := buffer[piece.Start : piece.Start+piece.Length]
+		totalLines += countLines(textSegment) - 1
+		content = append(content, textSegment...)
 	}
-	lineString := SplitLines(string(textSegment))[ef.Cursor.CursorY+offset]
-	line = []rune(lineString)
-	lineLength = len(lineString)
 	return
 }
 

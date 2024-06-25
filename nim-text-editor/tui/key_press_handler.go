@@ -3,7 +3,6 @@ package tui
 import (
 	constants "nim-text-editor/constants"
 	editFile "nim-text-editor/edit_file"
-	"strings"
 
 	"github.com/nsf/termbox-go"
 )
@@ -20,13 +19,13 @@ func (tui *TUI) onVerticalArrow(arrowType termbox.Key) {
 		tui.moveVertically()
 	case termbox.KeyArrowLeft:
 		tui.moveUp()
-		_, lineLength := tui.ef.GetLine()
+		_, lineLength := tui.ef.GetLine(0)
 		cur.ChangeX(lineLength + startX - 1)
 	case termbox.KeyArrowRight:
 		tui.moveDown()
 		cur.ChangeX(startX)
 	}
-	_, lineLength := tui.ef.GetLine()
+	_, lineLength := tui.ef.GetLine(0)
 	tui.scrollX(startX + lineLength)
 }
 
@@ -34,8 +33,8 @@ func (tui *TUI) moveVertically() {
 	ef := tui.ef
 	cur := ef.Cursor
 	startX := tui.startX
-	totalLines := ef.GetTotalLines()
-	_, lineLength := ef.GetLine()
+	_, totalLines := ef.GetContent()
+	_, lineLength := ef.GetLine(0)
 	if totalLines <= cur.CursorY || lineLength <= 0 {
 		ef.SetXMemo()
 		cur.ChangeX(startX)
@@ -52,7 +51,7 @@ func (tui *TUI) moveVertically() {
 
 func (tui *TUI) moveDown() {
 	cur := tui.ef.Cursor
-	totalLines := tui.ef.GetTotalLines()
+	_, totalLines := tui.ef.GetContent()
 	if cur.CursorY < totalLines-1 {
 		cur.CursorY++
 		if cur.CursorY >= cur.ScrollY+tui.height {
@@ -97,7 +96,7 @@ func (tui *TUI) onBackspace() {
 	cur := ef.Cursor
 	xi := cur.GetCurXIndex()
 	if xi == 0 {
-    _, prevLineLen := ef.GetLine(-1)
+		_, prevLineLen := ef.GetLine(-1)
 		cur.ChangeX(prevLineLen + tui.startX)
 		cur.CursorY--
 		if cur.CursorX >= cur.ScrollX+tui.width {
@@ -126,7 +125,7 @@ func (tui *TUI) onCharInput(char rune) {
 
 func (tui *TUI) AddPieces(input []rune) {
 	ef := tui.ef
-	ef.Content.Add = append(ef.Content.Add, input...)
+	*ef.Content.Add = append(*ef.Content.Add, input...)
 
 	pieces := ef.Content.Pieces
 	curX := ef.Cursor.GetCurXIndex()
@@ -156,9 +155,9 @@ func (tui *TUI) AddPieces(input []rune) {
 		if curX >= piece.Start && curX <= piece.Start+piece.Length {
 			var source *[]rune
 			if piece.Source == editFile.ADD {
-				source = &ef.Content.Add
+				source = ef.Content.Add
 			} else {
-				source = &ef.Content.Original
+				source = ef.Content.Original
 			}
 			splitSizeLeading := len((*source)[:curX])
 			if curX != piece.Start {
@@ -203,14 +202,14 @@ func (tui *TUI) RemovePiece() {
 
 	removePiecesArr := make([]*editFile.PieceTable, 0, 2+len(pieces)-1)
 
-	for i, _ := range pieces {
+	for i := range pieces {
 		piece := pieces[i]
 		if curX > piece.Start && curX <= piece.Start+piece.Length {
 			var source *[]rune
 			if piece.Source == editFile.ADD {
-				source = &ef.Content.Add
+				source = ef.Content.Add
 			} else {
-				source = &ef.Content.Original
+				source = ef.Content.Original
 			}
 			if curX == piece.Start+1 {
 				piece.Start++
