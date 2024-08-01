@@ -33,9 +33,9 @@ func (tui *TUI) Init() {
 		return
 	}
 
-  ef.Content = &editFile.ContentTable{}
+	ef.Content = &editFile.ContentTable{}
 	content := []rune(string(contentByte))
-	ef.Content.Original = &content
+	ef.Content.Original = content
 	ef.Content.Pieces = append(ef.Content.Pieces, &editFile.PieceTable{Start: 0, Length: len(content), Source: editFile.ORIGINAL})
 	tui.displayContent()
 	tui.handleInput()

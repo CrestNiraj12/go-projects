@@ -22,7 +22,7 @@ func (tui *TUI) onVerticalArrow(arrowType termbox.Key) {
 		_, lineLength := tui.ef.GetLine(0)
 		cur.ChangeX(lineLength + startX - 1)
 	case termbox.KeyArrowRight:
-		tui.moveDown()
+	tui.moveDown()
 		cur.ChangeX(startX)
 	}
 	_, lineLength := tui.ef.GetLine(0)
@@ -125,7 +125,7 @@ func (tui *TUI) onCharInput(char rune) {
 
 func (tui *TUI) AddPieces(input []rune) {
 	ef := tui.ef
-	*ef.Content.Add = append(*ef.Content.Add, input...)
+	ef.Content.Add = append(ef.Content.Add, input...)
 
 	pieces := ef.Content.Pieces
 	curX := ef.Cursor.GetCurXIndex()
@@ -139,7 +139,6 @@ func (tui *TUI) AddPieces(input []rune) {
 			})
 			return
 		} else {
-
 			lastPiece := pieces[len(pieces)-1]
 			if lastPiece.Source == editFile.ADD {
 				lastPiece.Length += inputLen
@@ -150,14 +149,14 @@ func (tui *TUI) AddPieces(input []rune) {
 
 	addPiecesArr := make([]*editFile.PieceTable, 0, 3+len(pieces)-1)
 
-	for i, _ := range pieces {
+	for i := range pieces {
 		piece := pieces[i]
 		if curX >= piece.Start && curX <= piece.Start+piece.Length {
 			var source *[]rune
 			if piece.Source == editFile.ADD {
-				source = ef.Content.Add
+				source = &ef.Content.Add
 			} else {
-				source = ef.Content.Original
+				source = &ef.Content.Original
 			}
 			splitSizeLeading := len((*source)[:curX])
 			if curX != piece.Start {
@@ -207,9 +206,9 @@ func (tui *TUI) RemovePiece() {
 		if curX > piece.Start && curX <= piece.Start+piece.Length {
 			var source *[]rune
 			if piece.Source == editFile.ADD {
-				source = ef.Content.Add
+				source = &ef.Content.Add
 			} else {
-				source = ef.Content.Original
+				source = &ef.Content.Original
 			}
 			if curX == piece.Start+1 {
 				piece.Start++

@@ -21,8 +21,8 @@ type EditFile struct {
 }
 
 type ContentTable struct {
-	Original *[]rune
-	Add      *[]rune
+	Original []rune
+	Add      []rune
 	Pieces   []*PieceTable
 }
 
@@ -39,11 +39,11 @@ func (ef *EditFile) GetFileLength() (length int) {
 }
 
 func (ef *EditFile) GetAddLength() int {
-	return len(string(*ef.Content.Add))
+	return len(string(ef.Content.Add))
 }
 
 func (ef *EditFile) GetOriginalLength() int {
-	return len(string(*ef.Content.Original))
+	return len(string(ef.Content.Original))
 }
 
 func (ef *EditFile) SplitLines(content string) []string {
@@ -67,9 +67,9 @@ func (ef *EditFile) GetContent() (content []rune, totalLines int) {
 
 	for _, piece := range ef.Content.Pieces {
 		if piece.Source == ORIGINAL {
-			buffer = *ef.Content.Original
+			buffer = ef.Content.Original
 		} else {
-			buffer = *ef.Content.Add
+			buffer = ef.Content.Add
 		}
 		textSegment := buffer[piece.Start : piece.Start+piece.Length]
 		totalLines += countLines(textSegment) - 1
