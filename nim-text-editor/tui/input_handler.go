@@ -48,7 +48,7 @@ inputLoop:
 			tui.width, tui.height = width, height
 		}
 		cur := ef.Cursor
-		_, lineLength := ef.GetLine(0)
+		_, lineLength := ef.GetLineByCursor(0)
 
 		switch ev := termbox.PollEvent(); ev.Type {
 		case termbox.EventKey:

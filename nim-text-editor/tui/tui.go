@@ -19,7 +19,7 @@ type TUI struct {
 func NewTUI(filename string) *TUI {
 	return &TUI{
 		ef: &editFile.EditFile{
-			Cursor:   &editFile.FileCursor{CursorX: constants.StartX},
+			Cursor: &editFile.FileCursor{CursorX: constants.StartX},
 			FileName: filename,
 		},
 		startX: constants.StartX,
@@ -69,7 +69,7 @@ func (tui *TUI) displayContent() {
 		tui.width, tui.height = termbox.Size()
 
 		for y := 0; y < tui.height && (cur.ScrollY+y) < totalLines; y++ {
-			line, _ := ef.GetLineByIndex(cur.ScrollY+y)
+			line, _ := ef.GetLineByIndex(cur.ScrollY + y)
 			insertLineNum(cur.ScrollY+y, y)
 
 			for x := 0; x+cur.ScrollX < len(line) && x+constants.StartX < tui.width; x++ {

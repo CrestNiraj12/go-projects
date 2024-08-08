@@ -19,13 +19,13 @@ func (tui *TUI) onVerticalArrow(arrowType termbox.Key) {
 		tui.moveVertically()
 	case termbox.KeyArrowLeft:
 		tui.moveUp()
-		_, lineLength := tui.ef.GetLine(0)
+		_, lineLength := tui.ef.GetLineByCursor(0)
 		cur.ChangeX(lineLength + startX - 1)
 	case termbox.KeyArrowRight:
 		tui.moveDown()
 		cur.ChangeX(startX)
 	}
-	_, lineLength := tui.ef.GetLine(0)
+	_, lineLength := tui.ef.GetLineByCursor(0)
 	tui.scrollX(startX + lineLength)
 }
 
@@ -34,7 +34,7 @@ func (tui *TUI) moveVertically() {
 	cur := ef.Cursor
 	startX := tui.startX
 	_, totalLines := ef.GetContent()
-	_, lineLength := ef.GetLine(0)
+	_, lineLength := ef.GetLineByCursor(0)
 	if totalLines <= cur.CursorY || lineLength <= 0 {
 		ef.SetXMemo()
 		cur.ChangeX(startX)
@@ -80,7 +80,7 @@ func (tui *TUI) onSpace() {
 func (tui *TUI) onEnter() {
 	ef := tui.ef
 	cur := ef.Cursor
-	_, lineLength := ef.GetLine(0)
+	_, lineLength := ef.GetLineByCursor(0)
 	tui.AddPieces([]rune{'\n'})
 	cur.CursorY++
 	if cur.CursorY >= cur.ScrollY+tui.height {
@@ -96,7 +96,7 @@ func (tui *TUI) onBackspace() {
 	cur := ef.Cursor
 	xi := cur.GetCurXIndex()
 	if xi == 0 {
-		_, prevLineLen := ef.GetLine(-1)
+		_, prevLineLen := ef.GetLineByCursor(-1)
 		cur.ChangeX(prevLineLen + tui.startX)
 		cur.CursorY--
 		if cur.CursorX >= cur.ScrollX+tui.width {
@@ -126,64 +126,84 @@ func (tui *TUI) onCharInput(char rune) {
 func (tui *TUI) AddPieces(input []rune) {
 	ef := tui.ef
 	ef.Content.Add = append(ef.Content.Add, input...)
-
-	pieces := ef.Content.Pieces
 	curX := ef.Cursor.GetCurXIndex()
 	inputLen := len(string(input))
+
 	if curX >= ef.GetFileLength() {
-		if len(pieces) <= 1 {
-			pieces = append(pieces, &editFile.PieceTable{
-				Start:  curX,
-				Length: inputLen,
-				Source: editFile.ADD,
-			})
-			return
-		} else {
-			lastPiece := pieces[len(pieces)-1]
-			if lastPiece.Source == editFile.ADD {
-				lastPiece.Length += inputLen
-			}
-		}
+		tui.addPiece(inputLen)
 		return
 	}
 
-	addPiecesArr := make([]*editFile.PieceTable, 0, 3+len(pieces)-1)
+	pieces := tui.splitPieces(inputLen)
+	ef.Content.Pieces = pieces
+}
+
+func (tui *TUI) addPiece(inputLen int) {
+	ef := tui.ef
+	pieces := ef.Content.Pieces
+	if len(pieces) <= 1 {
+		ef.Content.Pieces = append(ef.Content.Pieces, &editFile.PieceTable{
+			Start:  len(ef.Content.Add),
+			Length: inputLen,
+			Source: editFile.ADD,
+		})
+	} else {
+		lastPiece := ef.Content.Pieces[len(pieces)-1]
+		if lastPiece.Source != editFile.ADD {
+			return
+		}
+		lastPiece.Length += inputLen
+	}
+}
+
+func (tui *TUI) splitPieces(inputLen int) []*editFile.PieceTable {
+	ef := tui.ef
+	pieces := ef.Content.Pieces
+	curX := ef.Cursor.GetCurXIndex()
+	ef.Content.Pieces = pieces
+
+	addPiecesArr := []*editFile.PieceTable{}
+	var prevPhraseLength int
 
 	for i := range pieces {
 		piece := pieces[i]
-		if curX >= piece.Start && curX <= piece.Start+piece.Length {
+		if curX <= prevPhraseLength+piece.Length {
 			var source *[]rune
 			if piece.Source == editFile.ADD {
 				source = &ef.Content.Add
 			} else {
 				source = &ef.Content.Original
 			}
-			splitSizeLeading := len((*source)[:curX])
-			if curX != piece.Start {
+			splitFromIndex := curX - prevPhraseLength
+			leadingPhraseLen := len((*source)[:splitFromIndex])
+			if leadingPhraseLen > 0 {
 				addPiecesArr = append(addPiecesArr, &editFile.PieceTable{
 					Start:  piece.Start,
-					Length: splitSizeLeading,
+					Length: leadingPhraseLen,
 					Source: piece.Source,
 				})
 			}
 
 			addPiecesArr = append(addPiecesArr, &editFile.PieceTable{
-				Start:  tui.ef.GetAddLength() - inputLen,
+				Start:  piece.Start + piece.Length,
 				Length: inputLen,
 				Source: editFile.ADD,
 			})
 
-			if curX != piece.Start+piece.Length {
+			if leadingPhraseLen < piece.Length {
 				addPiecesArr = append(addPiecesArr, &editFile.PieceTable{
-					Start:  splitSizeLeading,
-					Length: piece.Length - splitSizeLeading,
+					Start:  piece.Start + leadingPhraseLen,
+					Length: piece.Length - leadingPhraseLen,
 					Source: piece.Source,
 				})
-				pieces = append(pieces[:i], append(addPiecesArr, pieces[i+1:]...)...)
 			}
+
+			pieces = append(pieces[:i], append(addPiecesArr, pieces[i+1:]...)...)
 			break
 		}
+		prevPhraseLength += piece.Length
 	}
+	return pieces
 }
 
 func (tui *TUI) RemovePiece() {

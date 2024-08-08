@@ -58,12 +58,8 @@ func (ef *EditFile) GetLineByIndex(index int) (line []rune, lineLength int) {
 	return
 }
 
-func (ef *EditFile) GetLine(offset int) (line []rune, lineLength int) {
-	content, _ := ef.GetContent()
-	lineString := ef.SplitLines(string(content))[ef.Cursor.CursorY+offset]
-	line = []rune(lineString)
-	lineLength = len(lineString)
-	return
+func (ef *EditFile) GetLineByCursor(offset int) (line []rune, lineLength int) {
+	return ef.GetLineByIndex(ef.Cursor.CursorY + offset)
 }
 
 func (ef *EditFile) GetContent() (content []rune, totalLines int) {
@@ -79,10 +75,11 @@ func (ef *EditFile) GetContent() (content []rune, totalLines int) {
 		} else {
 			buffer = ef.Content.Add
 		}
-		textSegment := buffer[piece.Start : piece.Start+piece.Length]
-		totalLines += countLines(textSegment) - 1
+		endIndex := piece.Start + piece.Length
+		textSegment := buffer[piece.Start:endIndex]
 		content = append(content, textSegment...)
 	}
+	totalLines = countLines(content)
 	return
 }
 
