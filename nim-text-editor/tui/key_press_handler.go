@@ -22,7 +22,7 @@ func (tui *TUI) onVerticalArrow(arrowType termbox.Key) {
 		_, lineLength := tui.ef.GetLine(0)
 		cur.ChangeX(lineLength + startX - 1)
 	case termbox.KeyArrowRight:
-	tui.moveDown()
+		tui.moveDown()
 		cur.ChangeX(startX)
 	}
 	_, lineLength := tui.ef.GetLine(0)

@@ -50,6 +50,14 @@ func (ef *EditFile) SplitLines(content string) []string {
 	return strings.Split(content, "\n")
 }
 
+func (ef *EditFile) GetLineByIndex(index int) (line []rune, lineLength int) {
+	content, _ := ef.GetContent()
+	lineString := ef.SplitLines(string(content))[index]
+	line = []rune(lineString)
+	lineLength = len(lineString)
+	return
+}
+
 func (ef *EditFile) GetLine(offset int) (line []rune, lineLength int) {
 	content, _ := ef.GetContent()
 	lineString := ef.SplitLines(string(content))[ef.Cursor.CursorY+offset]

@@ -69,7 +69,7 @@ func (tui *TUI) displayContent() {
 		tui.width, tui.height = termbox.Size()
 
 		for y := 0; y < tui.height && (cur.ScrollY+y) < totalLines; y++ {
-			line, _ := ef.GetLine(y)
+			line, _ := ef.GetLineByIndex(y)
 			insertLineNum(cur.ScrollY+y, y)
 
 			for x := 0; x+cur.ScrollX < len(line) && x+constants.StartX < tui.width; x++ {
